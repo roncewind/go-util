@@ -6,8 +6,8 @@ import "context"
 
 // OrDone encapsulates the for-select idiom used for many goroutines
 // the idea is that it makes the code easier to read
-func OrDone(ctx context.Context, c <-chan interface{}) <-chan interface{} {
-	valueStream := make(chan interface{})
+func OrDone[T interface{}](ctx context.Context, c <-chan T) <-chan T {
+	valueStream := make(chan T)
 	go func() {
 		defer close(valueStream)
 		for {
