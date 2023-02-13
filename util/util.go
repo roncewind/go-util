@@ -1,6 +1,9 @@
 package util
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 // ----------------------------------------------------------------------------
 // Channels based on Katherine Cox-Buday's Concurrency in Go
@@ -95,6 +98,38 @@ func Or[T any](channels ...<-chan T) <-chan T {
 		}
 	}()
 	return orDone
+}
+
+// ----------------------------------------------------------------------------
+
+// FanIn joins several channels into one
+func FanIn[T any](ctx context.Context, streams ...<-chan T) <-chan T {
+	joinedStream := make(chan T)
+
+	var wg sync.WaitGroup
+	wg.Add(len(streams))
+
+	for _, s := range streams {
+		s := s
+
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case stream := <-s:
+					joinedStream <- stream
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(joinedStream)
+	}()
+	return joinedStream
 }
 
 // ----------------------------------------------------------------------------
