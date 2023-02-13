@@ -165,9 +165,9 @@ func TestUtil_Repeat_cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	c := Repeat(ctx, "foo")
-	val1 := <-c
-	val2 := <-c
-	if val1 == "foo" && val2 == "foo" {
+	_, ok1 := <-c
+	_, ok2 := <-c
+	if ok1 && ok2 {
 		t.Fatal("cancel Repeat failed")
 	}
 }
@@ -189,5 +189,20 @@ func TestUtil_Take(t *testing.T) {
 	_, ok := <-c
 	if ok {
 		t.Fatal("channel should be closed")
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+// test Take generator
+func TestUtil_Take_cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	c := Take(ctx, Repeat(ctx, "foo"), 2)
+	_, ok1 := <-c
+	_, ok2 := <-c
+	if ok1 && ok2 {
+		t.Fatal("cancel Take failed")
 	}
 }
