@@ -3,6 +3,10 @@ package util
 import "context"
 
 // ----------------------------------------------------------------------------
+// Channels based on Katherine Cox-Buday's Concurrency in Go
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
 
 // OrDone encapsulates the for-select idiom used for many goroutines
 // the idea is that it makes the code easier to read
@@ -86,4 +90,46 @@ func Or[T any](channels ...<-chan T) <-chan T {
 		}
 	}()
 	return orDone
+}
+
+// ----------------------------------------------------------------------------
+// Generators based on Katherine Cox-Buday's Concurrency in Go
+// ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+
+// generator that repeats over and over the values it is given
+func Repeat[T any](ctx context.Context, values ...T) <-chan T {
+	valueStream := make(chan T)
+	go func() {
+		defer close(valueStream)
+		for {
+			for _, v := range values {
+				select {
+				case <-ctx.Done():
+					return
+				case valueStream <- v:
+				}
+			}
+		}
+	}()
+	return valueStream
+}
+
+// ----------------------------------------------------------------------------
+
+// generator that takes the specified number of elements from a stream
+func Take[T any](ctx context.Context, valueStream <-chan T, num int) <-chan T {
+	takeStream := make(chan T)
+	go func() {
+		defer close(takeStream)
+		for i := 0; i < num; i++ {
+			select {
+			case <-ctx.Done():
+				return
+			case takeStream <- <-valueStream:
+			}
+		}
+	}()
+	return takeStream
 }
