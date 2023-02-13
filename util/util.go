@@ -63,12 +63,17 @@ func Tee[T any](ctx context.Context, in <-chan T) (_, _ <-chan T) {
 
 // Or returns a channel that combines all the specified channels.
 func Or[T any](channels ...<-chan T) <-chan T {
-	switch len(channels) {
-	case 0:
-		return nil
-	case 1:
+	if len(channels) == 1 {
 		return channels[0]
 	}
+	// When using generics Or cannot be called with zero arguments since the
+	// type cannot be inferred
+	// switch len(channels) {
+	// case 0:
+	// 	return nil
+	// case 1:
+	// 	return channels[0]
+	// }
 
 	orDone := make(chan T)
 	go func() {

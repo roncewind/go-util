@@ -86,3 +86,108 @@ func TestUtil_Tee(t *testing.T) {
 		t.Fatal("Tee'd streams not the same")
 	}
 }
+
+// ----------------------------------------------------------------------------
+
+// utility function used for testing Or
+func sig(after time.Duration) <-chan interface{} {
+	c := make(chan interface{})
+	go func() {
+		defer close(c)
+		time.Sleep(after)
+	}()
+	return c
+}
+
+// ----------------------------------------------------------------------------
+
+// test Or
+func TestUtil_Or_1(t *testing.T) {
+	start := time.Now()
+	<-Or(
+		sig(1 * time.Second),
+	)
+	if since := int(time.Since(start) / time.Second); since > 1 {
+		t.Fatalf("failed to select the correct channel: %d", since)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+// test Or
+func TestUtil_Or_2(t *testing.T) {
+	start := time.Now()
+	<-Or(
+		sig(1*time.Second),
+		sig(1*time.Minute),
+	)
+	if since := int(time.Since(start) / time.Second); since > 1 {
+		t.Fatalf("failed to select the correct channel: %d", since)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+// test Or
+func TestUtil_Or_5(t *testing.T) {
+	start := time.Now()
+	<-Or(
+		sig(2*time.Hour),
+		sig(5*time.Minute),
+		sig(1*time.Second),
+		sig(1*time.Hour),
+		sig(1*time.Minute),
+	)
+	if since := int(time.Since(start) / time.Second); since > 1 {
+		t.Fatalf("failed to select the correct channel: %d", since)
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+// test Repeat generator
+func TestUtil_Repeat(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := Repeat(ctx, "foo")
+	val1 := <-c
+	val2 := <-c
+	if val1 != val2 {
+		t.Fatal("values were not repeated as expected")
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+// test Repeat generator with cancelled context
+func TestUtil_Repeat_cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	c := Repeat(ctx, "foo")
+	val1 := <-c
+	val2 := <-c
+	if val1 == "foo" && val2 == "foo" {
+		t.Fatal("cancel Repeat failed")
+	}
+}
+
+// ----------------------------------------------------------------------------
+
+// test Take generator
+func TestUtil_Take(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	c := Take(ctx, Repeat(ctx, "foo"), 2)
+	val1 := <-c
+	val2 := <-c
+	if val1 != val2 {
+		t.Fatal("values were not repeated as expected")
+	}
+
+	_, ok := <-c
+	if ok {
+		t.Fatal("channel should be closed")
+	}
+}
