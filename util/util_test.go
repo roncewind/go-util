@@ -63,4 +63,26 @@ func TestUtil_OrDone_closedStream(t *testing.T) {
 			t.Fatal("OrDone pulling from closed stream")
 		}
 	}
+
+}
+
+// ----------------------------------------------------------------------------
+
+// test Tee
+func TestUtil_Tee(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	intStream := make(chan int)
+	go func() {
+		intStream <- 42
+		close(intStream)
+	}()
+
+	out1, out2 := Tee(ctx, intStream)
+	val1 := <-out1
+	val2 := <-out2
+
+	if val1 != val2 {
+		t.Fatal("Tee'd streams not the same")
+	}
 }
