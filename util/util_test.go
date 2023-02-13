@@ -145,6 +145,55 @@ func TestUtil_Or_5(t *testing.T) {
 
 // ----------------------------------------------------------------------------
 
+// test FanIn
+func TestUtil_FanIn(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	intStream1 := make(chan int)
+	intStream2 := make(chan int)
+	defer close(intStream1)
+	defer close(intStream2)
+
+	go func() {
+		intStream1 <- 1
+		intStream2 <- 41
+	}()
+
+	joinedStream := FanIn(ctx, intStream1, intStream2)
+	val1 := <-joinedStream
+	val2 := <-joinedStream
+
+	if val1+val2 != 42 {
+		t.Fatal("did not FanIn properly")
+	}
+
+}
+
+// ----------------------------------------------------------------------------
+
+// test FanIn context cancelled
+func TestUtil_FanIn_cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	intStream1 := make(chan int)
+	intStream2 := make(chan int)
+	defer close(intStream1)
+	defer close(intStream2)
+
+	joinedStream := FanIn(ctx, intStream1, intStream2)
+	_, ok1 := <-joinedStream
+	_, ok2 := <-joinedStream
+
+	if ok1 && ok2 {
+		t.Fatal("did not FanIn properly with cancelled context")
+	}
+
+}
+
+// ----------------------------------------------------------------------------
+
 // test Repeat generator
 func TestUtil_Repeat(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
