@@ -133,6 +133,35 @@ func FanIn[T any](ctx context.Context, streams ...<-chan T) <-chan T {
 }
 
 // ----------------------------------------------------------------------------
+
+// Bridge joins transforms a series of channels into a single channel
+func Bridge[T any](ctx context.Context, chanStream <-chan <-chan T) <-chan T {
+	valStream := make(chan T)
+	go func() {
+		defer close(valStream)
+		for {
+			var stream <-chan T
+			select {
+			case maybeStream, ok := <-chanStream:
+				if ok == false {
+					return
+				}
+				stream = maybeStream
+			case <-ctx.Done():
+				return
+			}
+			for val := range OrDone(ctx, stream) {
+				select {
+				case valStream <- val:
+				case <-ctx.Done():
+				}
+			}
+		}
+	}()
+	return valStream
+}
+
+// ----------------------------------------------------------------------------
 // Generators based on Katherine Cox-Buday's Concurrency in Go
 // ----------------------------------------------------------------------------
 
