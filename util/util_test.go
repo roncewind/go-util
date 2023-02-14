@@ -181,7 +181,7 @@ func TestUtil_Bridge(t *testing.T) {
 		chanStream := make(chan (<-chan int))
 		go func() {
 			defer close(chanStream)
-			for i := 0; i < 10; i++ {
+			for i := 0; i < 2; i++ {
 				stream := make(chan int, 1)
 				stream <- i
 				close(stream)
@@ -191,10 +191,14 @@ func TestUtil_Bridge(t *testing.T) {
 		return chanStream
 	}
 
+	accumulator := 0
 	for v := range Bridge(ctx, generateValues()) {
-		fmt.Printf("%v ", v)
+		accumulator += v
 	}
 
+	if accumulator != 1 {
+		t.Fatal("error in Bridge")
+	}
 }
 
 // ----------------------------------------------------------------------------
