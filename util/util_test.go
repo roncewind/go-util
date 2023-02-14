@@ -172,6 +172,33 @@ func TestUtil_FanIn(t *testing.T) {
 
 // ----------------------------------------------------------------------------
 
+// test Bridge
+func TestUtil_Bridge(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	generateValues := func() <-chan <-chan int {
+		chanStream := make(chan (<-chan int))
+		go func() {
+			defer close(chanStream)
+			for i := 0; i < 10; i++ {
+				stream := make(chan int, 1)
+				stream <- i
+				close(stream)
+				chanStream <- stream
+			}
+		}()
+		return chanStream
+	}
+
+	for v := range Bridge(ctx, generateValues()) {
+		fmt.Printf("%v ", v)
+	}
+
+}
+
+// ----------------------------------------------------------------------------
+
 // test FanIn context cancelled
 func TestUtil_FanIn_cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
