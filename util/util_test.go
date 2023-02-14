@@ -172,6 +172,28 @@ func TestUtil_FanIn(t *testing.T) {
 
 // ----------------------------------------------------------------------------
 
+// test FanIn context cancelled
+func TestUtil_FanIn_cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	intStream1 := make(chan int)
+	intStream2 := make(chan int)
+	defer close(intStream1)
+	defer close(intStream2)
+
+	joinedStream := FanIn(ctx, intStream1, intStream2)
+	_, ok1 := <-joinedStream
+	_, ok2 := <-joinedStream
+
+	if ok1 && ok2 {
+		t.Fatal("did not FanIn properly with cancelled context")
+	}
+
+}
+
+// ----------------------------------------------------------------------------
+
 // test Bridge
 func TestUtil_Bridge(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -226,28 +248,6 @@ func TestUtil_Bridge_cancel(t *testing.T) {
 	if len(v) != 0 {
 		t.Fatal("error in Bridge with cancelled context")
 	}
-}
-
-// ----------------------------------------------------------------------------
-
-// test FanIn context cancelled
-func TestUtil_FanIn_cancel(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	intStream1 := make(chan int)
-	intStream2 := make(chan int)
-	defer close(intStream1)
-	defer close(intStream2)
-
-	joinedStream := FanIn(ctx, intStream1, intStream2)
-	_, ok1 := <-joinedStream
-	_, ok2 := <-joinedStream
-
-	if ok1 && ok2 {
-		t.Fatal("did not FanIn properly with cancelled context")
-	}
-
 }
 
 // ----------------------------------------------------------------------------
