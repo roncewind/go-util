@@ -203,6 +203,33 @@ func TestUtil_Bridge(t *testing.T) {
 
 // ----------------------------------------------------------------------------
 
+// test Bridge
+func TestUtil_Bridge_cancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	generateValues := func() <-chan <-chan int {
+		chanStream := make(chan (<-chan int))
+		go func() {
+			defer close(chanStream)
+			for i := 0; i < 2; i++ {
+				stream := make(chan int, 1)
+				stream <- i
+				close(stream)
+				chanStream <- stream
+			}
+		}()
+		return chanStream
+	}
+
+	v := Bridge(ctx, generateValues())
+	if len(v) != 0 {
+		t.Fatal("error in Bridge with cancelled context")
+	}
+}
+
+// ----------------------------------------------------------------------------
+
 // test FanIn context cancelled
 func TestUtil_FanIn_cancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
