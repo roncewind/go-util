@@ -22,7 +22,7 @@ func OrDone[T any](ctx context.Context, c <-chan T) <-chan T {
 			case <-ctx.Done():
 				return
 			case v, ok := <-c:
-				if !ok {
+				if !ok && len(c) == 0 {
 					return
 				}
 				select {
