@@ -10,6 +10,7 @@ import (
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/roncewind/go-util/queues"
 )
 
 type Client struct {
@@ -32,11 +33,6 @@ type Client struct {
 	reconnectDelay  time.Duration
 	reInitDelay     time.Duration
 	resendDelay     time.Duration
-}
-
-type Record interface {
-	GetMessage() string
-	GetMessageId() string
 }
 
 var (
@@ -291,7 +287,7 @@ func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 // it re-sends messages until a confirm is received.
 // This will block until the server sends a confirm. Errors are
 // only returned if the push action itself fails, see UnsafePush.
-func (client *Client) Push(record Record) error {
+func (client *Client) Push(record queues.Record) error {
 
 	if !client.isReady {
 		// wait for client to be ready
@@ -329,7 +325,7 @@ func (client *Client) Push(record Record) error {
 // confirmation. It returns an error if it fails to connect.
 // No guarantees are provided for if the server will
 // receive the message.
-func (client *Client) UnsafePush(record Record) error {
+func (client *Client) UnsafePush(record queues.Record) error {
 
 	if !client.isReady {
 		// wait for client to be ready
