@@ -2,7 +2,6 @@ package rabbitmq
 
 import (
 	"context"
-	"errors"
 	"log"
 	"math/rand"
 	"net/url"
@@ -11,11 +10,13 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roncewind/go-util/queues"
+	"github.com/roncewind/go-util/util"
 )
 
 type Client struct {
-	ExchangeName   string
-	QueueName      string
+	ExchangeName string
+	QueueName    string
+	// desired / default delay durations
 	ReconnectDelay time.Duration
 	ReInitDelay    time.Duration
 	ResendDelay    time.Duration
@@ -30,29 +31,38 @@ type Client struct {
 	notifyChanClose chan *amqp.Error
 	notifyConfirm   chan amqp.Confirmation
 	notifyReady     chan interface{}
-	reconnectDelay  time.Duration
-	reInitDelay     time.Duration
-	resendDelay     time.Duration
+	// current delay durations
+	reconnectDelay time.Duration
+	reInitDelay    time.Duration
+	resendDelay    time.Duration
+}
+
+type RabbitError struct {
+	error
 }
 
 var (
-	errAlreadyClosed = errors.New("already closed: not connected to the server")
-	errShutdown      = errors.New("client is shutting down")
+	errAlreadyClosed = RabbitError{util.WrapError(nil, "already closed: not connected to the server")}
+	errShutdown      = RabbitError{util.WrapError(nil, "client is shutting down")}
+	// errAlreadyClosed = errors.New("already closed: not connected to the server")
+	// errShutdown      = errors.New("client is shutting down")
 )
 
 // ----------------------------------------------------------------------------
 
 // New creates a single RabbitMQ client that will automatically
 // attempt to connect to the server.  Reconnection delays are set to defaults.
-func NewClient(urlString string) *Client {
+func NewClient(urlString string) (*Client, error) {
 
 	u, err := url.Parse(urlString)
 	if err != nil {
-		panic(err)
+		return nil, RabbitError{util.WrapError(err, "unable to parse RabbitMQ URL string")}
+		// panic(err)
 	}
 	queryMap, _ := url.ParseQuery(u.RawQuery)
 	if len(queryMap["exchange"]) < 1 || len(queryMap["queue-name"]) < 1 {
-		panic("Please define an exchange and queue-name as query parameters.")
+		return nil, RabbitError{util.WrapError(err, "please define an exchange and queue-name as query parameters")}
+		// panic("Please define an exchange and queue-name as query parameters.")
 	}
 	routingKey := queryMap["queue-name"][0]
 	if len(queryMap["routing-key"]) > 0 {
@@ -75,7 +85,7 @@ func NewClient(urlString string) *Client {
 	client.reInitDelay = client.ReInitDelay
 	client.resendDelay = client.ResendDelay
 	go client.handleReconnect(urlString)
-	return &client
+	return &client, nil
 }
 
 // ----------------------------------------------------------------------------
@@ -148,7 +158,7 @@ func (client *Client) connect(addr string) (*amqp.Connection, error) {
 	conn, err := amqp.Dial(addr)
 
 	if err != nil {
-		return nil, err
+		return nil, RabbitError{util.WrapError(err, "unable to dial RabbitMQ address: %v", addr)}
 	}
 
 	client.changeConnection(conn)
@@ -200,7 +210,7 @@ func (client *Client) init(conn *amqp.Connection) error {
 	ch, err := conn.Channel()
 
 	if err != nil {
-		return err
+		return RabbitError{util.WrapError(err, "unable to initialize the RabbitMQ channel")}
 	}
 
 	err = ch.Confirm(false)
@@ -218,7 +228,7 @@ func (client *Client) init(conn *amqp.Connection) error {
 		nil,                 // arguments
 	)
 	if err != nil {
-		return err
+		return RabbitError{util.WrapError(err, "unable to declare the RabbitMQ exchange")}
 	}
 
 	var q amqp.Queue
@@ -231,7 +241,7 @@ func (client *Client) init(conn *amqp.Connection) error {
 		nil,              // arguments
 	)
 	if err != nil {
-		return err
+		return RabbitError{util.WrapError(err, "unable to initialize the RabbitMQ queue")}
 	}
 
 	err = ch.QueueBind(
@@ -242,7 +252,7 @@ func (client *Client) init(conn *amqp.Connection) error {
 		nil,
 	)
 	if err != nil {
-		return err
+		return RabbitError{util.WrapError(err, "unable to bind the RabbitMQ queue")}
 	}
 
 	client.changeChannel(ch)
@@ -275,6 +285,9 @@ func (client *Client) changeChannel(channel *amqp.Channel) {
 	client.channel.NotifyPublish(client.notifyConfirm)
 }
 
+// ----------------------------------------------------------------------------
+
+// progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	//TODO:  seed random number generator
 	return delay + time.Duration(rand.Intn(int(delay/time.Second)))*time.Second
@@ -374,7 +387,7 @@ func (client *Client) Consume(prefetch int) (<-chan amqp.Delivery, error) {
 		0,        // prefetch size
 		false,    // global
 	); err != nil {
-		return nil, err
+		return nil, RabbitError{util.WrapError(err, "unable to set the RabbitMQ channel quality of service")}
 	}
 
 	return client.channel.Consume(
