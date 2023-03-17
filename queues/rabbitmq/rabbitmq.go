@@ -82,7 +82,6 @@ func NewClient(urlString string) *Client {
 
 // Init initializes a single RabbitMQ client that will automatically
 // attempt to connect to the server.
-// TODO:  error if required fields (exchangeName, queueName, and urlString aren't specified)
 func Init(client *Client, urlString string) *Client {
 
 	// set up defaults if none provided
@@ -133,7 +132,8 @@ func (client *Client) handleReconnect(addr string) {
 			client.logger.Println("continue.")
 			continue
 		}
-		client.logger.Println("set client.reconnectDelay:", client.ReconnectDelay)
+
+		// reset client.reconnectDealy
 		client.reconnectDelay = client.ReconnectDelay
 		if done := client.handleReInit(conn); done {
 			break
