@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/url"
@@ -207,6 +208,11 @@ func (client *Client) handleReInit(conn *amqp.Connection) bool {
 
 // init will initialize channel, declare the exchange, and declare the queue
 func (client *Client) init(conn *amqp.Connection) error {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in init", r)
+		}
+	}()
 	ch, err := conn.Channel()
 
 	if err != nil {
