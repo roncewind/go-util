@@ -210,7 +210,7 @@ func (client *Client) handleReInit(conn *amqp.Connection) bool {
 func (client *Client) init(conn *amqp.Connection) error {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("Recovered in init", r)
+			fmt.Println("Attempting to init RabbitMQ client while shutting down.", r)
 		}
 	}()
 	ch, err := conn.Channel()
