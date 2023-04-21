@@ -175,7 +175,7 @@ func Bridge[T any](ctx context.Context, chanStream <-chan <-chan T) <-chan T {
 // Beware: This function incurs a 1μs per item performance hit.
 func Shuffle[T any](ctx context.Context, in chan T, targetDistance int) <-chan T {
 
-	bufferSize = int(math.Round(float64(targetDistance) * 1.7))
+	bufferSize = int(math.Round(float64(targetDistance) * magicFactor))
 	if bufferSize <= 0 {
 		bufferSize = 1
 	}
@@ -211,6 +211,7 @@ type record struct {
 
 var bufferSize int = 1000
 var delayInMicros time.Duration = 1
+var magicFactor float64 = 1.7
 
 // ----------------------------------------------------------------------------
 

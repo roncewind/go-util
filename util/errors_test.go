@@ -2,7 +2,6 @@ package util
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 )
 
@@ -11,9 +10,7 @@ import (
 // test normal operation of WrapError
 func TestUtil_WrapError(t *testing.T) {
 	var err interface{} = WrapError(errors.New("inner"), "outer %s", "foo")
-	if _, ok := err.(SzError); ok {
-		fmt.Println(err)
-	} else {
+	if _, ok := err.(SzError); !ok {
 		t.Fatal("WrapError did not create an SzError")
 	}
 
