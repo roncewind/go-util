@@ -105,7 +105,9 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.reconnectDelay = client.ReconnectDelay
 	client.reInitDelay = client.ReInitDelay
 	client.resendDelay = client.ResendDelay
-
+	client.isReady = true
+	client.notifyReady <- struct{}{}
+	client.logger.Println("Setup!")
 	return &client, nil
 }
 
@@ -124,18 +126,12 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 	messageInput := &sqs.SendMessageInput{
 		DelaySeconds: 0,
 		MessageAttributes: map[string]types.MessageAttributeValue{
-			//file name or url of the source data
-			"Source": {
+			"MessageID": {
 				DataType:    aws.String("String"),
-				StringValue: aws.String("filename or url"),
-			},
-			//line number or numeric id of the source record
-			"ID": {
-				DataType:    aws.String("Number"),
-				StringValue: aws.String("10"),
+				StringValue: aws.String(record.GetMessageId()),
 			},
 		},
-		MessageBody: aws.String("article about sending a message to AWS SQS using Go"),
+		MessageBody: aws.String(record.GetMessage()),
 		QueueUrl:    client.sqsURL.QueueUrl,
 	}
 
@@ -145,7 +141,7 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 		return
 	}
 
-	log.Printf("Message ID: %s", *resp.MessageId)
+	log.Printf("AWS response Message ID: %s", *resp.MessageId)
 	log.Println(resp.ResultMetadata)
 	return nil
 }
