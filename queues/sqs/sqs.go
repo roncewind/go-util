@@ -172,18 +172,21 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 		return SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
 
-	// for {
-	err := client.sendMessage(ctx, record)
-	if err != nil {
-		client.logger.Println("Push failed. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //TODO:  debug or trace logging, add messageId
-		select {
-		case <-client.done:
-			return errShutdown //TODO:  error message to include messageId?
-		case <-time.After(client.resendDelay):
-			client.resendDelay = client.progressiveDelay(client.resendDelay)
+	for {
+		err := client.sendMessage(ctx, record)
+		if err != nil {
+			client.logger.Println("Push failed. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //TODO:  debug or trace logging, add messageId
+			select {
+			case <-client.done:
+				return errShutdown //TODO:  error message to include messageId?
+			case <-time.After(client.resendDelay):
+				client.resendDelay = client.progressiveDelay(client.resendDelay)
+			}
+			continue
+			// return err
+		} else {
+			return nil
 		}
-		// continue
-		return err
 	}
 	// select {
 	// case confirm := <-client.notifyConfirm:
@@ -197,5 +200,5 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 	// }
 	// client.logger.Println("Push didn't confirm. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //TODO:  debug or trace logging, add messageId
 	// }
-	return nil
+	// return nil
 }
