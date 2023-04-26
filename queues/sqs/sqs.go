@@ -107,7 +107,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.reconnectDelay = client.ReconnectDelay
 	client.reInitDelay = client.ReInitDelay
 	client.resendDelay = client.ResendDelay
-	client.notifyReady <- struct{}{}
+	// client.notifyReady <- struct{}{}
 	client.isReady = true
 	client.logger.Println("Setup!")
 	return &client, nil
@@ -168,7 +168,8 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 
 	if !client.isReady {
 		// wait for client to be ready
-		<-client.notifyReady
+		// <-client.notifyReady
+		return SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
 
 	// for {
