@@ -107,8 +107,8 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.reconnectDelay = client.ReconnectDelay
 	client.reInitDelay = client.ReInitDelay
 	client.resendDelay = client.ResendDelay
+	client.notifyReady <- struct{}{}
 	client.isReady = true
-	// client.notifyReady <- struct{}{}
 	client.logger.Println("Setup!")
 	return &client, nil
 }
@@ -145,6 +145,7 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 
 	log.Printf("AWS response Message ID: %s", *resp.MessageId)
 	// log.Println(resp.ResultMetadata)
+
 	return nil
 }
 
