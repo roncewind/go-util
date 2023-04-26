@@ -74,6 +74,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 		// panic("Please define an exchange and queue-name as query parameters.")
 	}
 
+	fmt.Println("LoadDefaultConfig")
 	// load the default aws config along with custom resolver.
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -95,6 +96,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	input := &sqs.GetQueueUrlInput{
 		QueueName: &queryMap["queue-name"][0],
 	}
+	fmt.Println("GetQueueURL")
 	sqsURL, err := GetQueueURL(ctx, client.sqsClient, input)
 	if err != nil {
 		log.Printf("error getting the queue URL: %v", err)
