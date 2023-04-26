@@ -144,7 +144,7 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 	}
 
 	log.Printf("AWS response Message ID: %s", *resp.MessageId)
-	log.Println(resp.ResultMetadata)
+	// log.Println(resp.ResultMetadata)
 	return nil
 }
 
