@@ -159,11 +159,8 @@ func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 
 // ----------------------------------------------------------------------------
 
-// Push will push data onto the queue and wait for a confirm.
-// If no confirm is received by the resendTimeout,
-// it re-sends messages until a confirm is received.
-// This will block until the server sends a confirm. Errors are
-// only returned if the push action itself fails, see UnsafePush.
+// Push will push data onto the queue and wait for a response.
+// TODO: work on resend with delay...
 func (client *Client) Push(ctx context.Context, record queues.Record) error {
 
 	if !client.isReady {
@@ -180,6 +177,7 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 			case <-client.done:
 				return errShutdown //TODO:  error message to include messageId?
 			case <-time.After(client.resendDelay):
+				//TODO:  resend forever???
 				client.resendDelay = client.progressiveDelay(client.resendDelay)
 			}
 			continue
@@ -188,17 +186,4 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 			return nil
 		}
 	}
-	// select {
-	// case confirm := <-client.notifyConfirm:
-	// 	if confirm.Ack {
-	// 		// reset resend delay
-	// 		client.resendDelay = client.ResendDelay
-	// 		return nil
-	// 	}
-	// case <-time.After(client.resendDelay):
-	// 	client.resendDelay = client.progressiveDelay(client.resendDelay)
-	// }
-	// client.logger.Println("Push didn't confirm. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //TODO:  debug or trace logging, add messageId
-	// }
-	// return nil
 }
