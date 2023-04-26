@@ -108,7 +108,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.reInitDelay = client.ReInitDelay
 	client.resendDelay = client.ResendDelay
 	client.isReady = true
-	client.notifyReady <- struct{}{}
+	// client.notifyReady <- struct{}{}
 	client.logger.Println("Setup!")
 	return &client, nil
 }
