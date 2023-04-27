@@ -260,3 +260,16 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 	}()
 	return outChan, nil
 }
+
+// ----------------------------------------------------------------------------
+
+// Close will cleanly shutdown the channel and connection.
+func (client *Client) Close() error {
+	if !client.isReady {
+		return errAlreadyClosed
+	}
+	close(client.done)
+	close(client.notifyReady)
+	client.isReady = false
+	return nil
+}
