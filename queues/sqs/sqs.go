@@ -25,6 +25,10 @@ type SQSQueueAPI interface {
 	SendMessage(ctx context.Context,
 		params *sqs.SendMessageInput,
 		optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
+
+	ReceiveMessage(ctx context.Context,
+		params *sqs.ReceiveMessageInput,
+		optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
 }
 
 type Client struct {
@@ -58,6 +62,19 @@ var (
 	// errAlreadyClosed = errors.New("already closed: not connected to the server")
 	// errShutdown      = errors.New("client is shutting down")
 )
+
+// ----------------------------------------------------------------------------
+func GetQueueURL(c context.Context, api SQSQueueAPI, input *sqs.GetQueueUrlInput) (*sqs.GetQueueUrlOutput, error) {
+	return api.GetQueueUrl(c, input)
+}
+
+func SendMessage(c context.Context, api SQSQueueAPI, input *sqs.SendMessageInput) (*sqs.SendMessageOutput, error) {
+	return api.SendMessage(c, input)
+}
+
+func ReceiveMessage(c context.Context, api SQSQueueAPI, input *sqs.ReceiveMessageInput) (*sqs.ReceiveMessageOutput, error) {
+	return api.ReceiveMessage(c, input)
+}
 
 // ----------------------------------------------------------------------------
 
@@ -113,13 +130,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	return &client, nil
 }
 
-func GetQueueURL(c context.Context, api SQSQueueAPI, input *sqs.GetQueueUrlInput) (*sqs.GetQueueUrlOutput, error) {
-	return api.GetQueueUrl(c, input)
-}
-
-func SendMessage(c context.Context, api SQSQueueAPI, input *sqs.SendMessageInput) (*sqs.SendMessageOutput, error) {
-	return api.SendMessage(c, input)
-}
+// ----------------------------------------------------------------------------
 
 // send a message to a queue.
 func (client *Client) sendMessage(ctx context.Context, record queues.Record) (err error) {
@@ -153,8 +164,8 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 
 // progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
-	//TODO:  seed random number generator
-	return delay + time.Duration(rand.Intn(int(delay/time.Second)))*time.Second
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	return delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
 }
 
 // ----------------------------------------------------------------------------
@@ -174,6 +185,8 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 		if err != nil {
 			client.logger.Println("Push failed. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //TODO:  debug or trace logging, add messageId
 			select {
+			case <-ctx.Done():
+				return errShutdown
 			case <-client.done:
 				return errShutdown //TODO:  error message to include messageId?
 			case <-time.After(client.resendDelay):
@@ -186,4 +199,61 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 			return nil
 		}
 	}
+}
+
+// ----------------------------------------------------------------------------
+
+// receive a message from a queue.
+func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOutput, error) {
+
+	// Receive a message with attributes to the given queue
+	receiveInput := &sqs.ReceiveMessageInput{
+		QueueUrl:              client.sqsURL.QueueUrl,
+		MessageAttributeNames: []string{"All"},
+		MaxNumberOfMessages:   1,
+		VisibilityTimeout:     int32(10),
+	}
+
+	msg, err := ReceiveMessage(ctx, client.sqsClient, receiveInput)
+	if err != nil {
+		log.Printf("error receiving messages: %v", err)
+		return nil, SQSError{util.WrapError(err, "error receiving messages")}
+	}
+
+	if msg.Messages == nil {
+		log.Printf("No messages found")
+		return nil, SQSError{util.WrapError(nil, "No messages.")}
+	}
+
+	log.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
+	return msg, nil
+}
+
+// ----------------------------------------------------------------------------
+
+// Consume will continuously put queue messages on the channel.
+func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error) {
+	if !client.isReady {
+		// wait for client to be ready
+		// <-client.notifyReady
+		return nil, SQSError{util.WrapError(nil, "SQS client is not ready.")}
+	}
+	outChan := make(chan *types.Message)
+	go func() {
+		for {
+			msg, err := client.receiveMessage(ctx)
+			if err != nil {
+				client.logger.Println("receiveMessage failed. MessageId:", *msg.Messages[0].MessageId) //TODO:  debug or trace logging, add messageId
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-client.done:
+				return
+			default:
+				outChan <- &msg.Messages[0]
+			}
+		}
+	}()
+	return outChan, nil
 }
