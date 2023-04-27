@@ -17,6 +17,7 @@ import (
 	"github.com/roncewind/go-util/util"
 )
 
+// TODO: use interface to mock SQS in tests
 type SQSQueueAPI interface {
 	GetQueueUrl(ctx context.Context,
 		params *sqs.GetQueueUrlInput,
