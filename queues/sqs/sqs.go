@@ -264,6 +264,8 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 			output, err := client.receiveMessage(ctx)
 			if err != nil {
 				client.logger.Println("receiveMessage failed")
+				time.Sleep(client.reconnectDelay * time.Second)
+				continue
 			}
 			select {
 			case <-ctx.Done():
