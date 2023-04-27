@@ -242,9 +242,9 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 	outChan := make(chan *types.Message)
 	go func() {
 		for {
-			msg, err := client.receiveMessage(ctx)
+			output, err := client.receiveMessage(ctx)
 			if err != nil {
-				client.logger.Println("receiveMessage failed. MessageId:", *msg.Messages[0].MessageId) //TODO:  debug or trace logging, add messageId
+				client.logger.Println("receiveMessage failed")
 			}
 			select {
 			case <-ctx.Done():
@@ -252,7 +252,9 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 			case <-client.done:
 				return
 			default:
-				outChan <- &msg.Messages[0]
+				for _, m := range output.Messages {
+					outChan <- &m
+				}
 			}
 		}
 	}()
