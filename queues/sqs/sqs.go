@@ -19,6 +19,10 @@ import (
 
 // TODO: use interface to mock SQS in tests
 type SQSQueueAPI interface {
+	DeleteMessage(ctx context.Context,
+		params *sqs.DeleteMessageInput,
+		optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+
 	GetQueueUrl(ctx context.Context,
 		params *sqs.GetQueueUrlInput,
 		optFns ...func(*sqs.Options)) (*sqs.GetQueueUrlOutput, error)
@@ -75,6 +79,21 @@ func SendMessage(c context.Context, api SQSQueueAPI, input *sqs.SendMessageInput
 
 func ReceiveMessage(c context.Context, api SQSQueueAPI, input *sqs.ReceiveMessageInput) (*sqs.ReceiveMessageOutput, error) {
 	return api.ReceiveMessage(c, input)
+}
+
+// RemoveMessage deletes a message from an Amazon SQS queue.
+// Inputs:
+//
+//	c is the context of the method call, which includes the AWS Region.
+//	api is the interface that defines the method call.
+//	input defines the input arguments to the service call.
+//
+// Output:
+//
+//	If success, a DeleteMessageOutput object containing the result of the service call and nil.
+//	Otherwise, nil and an error from the call to DeleteMessage.
+func RemoveMessage(c context.Context, api SQSQueueAPI, input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+	return api.DeleteMessage(c, input)
 }
 
 // ----------------------------------------------------------------------------
@@ -259,6 +278,26 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 		}
 	}()
 	return outChan, nil
+}
+
+// ----------------------------------------------------------------------------
+
+// Remove a message from the SQS queue
+func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) error {
+	deleteMessageInput := &sqs.DeleteMessageInput{
+		QueueUrl:      client.sqsURL.QueueUrl,
+		ReceiptHandle: msg.ReceiptHandle,
+	}
+
+	_, err := RemoveMessage(ctx, client.sqsClient, deleteMessageInput)
+	if err != nil {
+		fmt.Println("Got an error deleting the message:")
+		fmt.Println(err)
+		return err
+	}
+
+	fmt.Println("Deleted message from queue with URL ", *client.sqsURL.QueueUrl)
+	return nil
 }
 
 // ----------------------------------------------------------------------------
