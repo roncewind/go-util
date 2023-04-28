@@ -39,18 +39,16 @@ type SQSQueueAPI interface {
 type Client struct {
 	QueueName string
 	// desired / default delay durations
+	MaxDelay       time.Duration
 	ReconnectDelay time.Duration
-	ReInitDelay    time.Duration
 	ResendDelay    time.Duration
 	RoutingKey     string
 
-	done        chan bool
-	isReady     bool
-	logger      *log.Logger
-	notifyReady chan interface{}
+	done    chan bool
+	isReady bool
+	logger  *log.Logger
 	// current delay durations
 	reconnectDelay time.Duration
-	reInitDelay    time.Duration
 	resendDelay    time.Duration
 
 	region    string //TODO: configure region
@@ -109,7 +107,6 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	queryMap, _ := url.ParseQuery(u.RawQuery)
 	if len(queryMap["queue-name"]) < 1 {
 		return nil, SQSError{util.WrapError(err, "please define a queue-name as query parameters")}
-		// panic("Please define an exchange and queue-name as query parameters.")
 	}
 
 	fmt.Println("LoadDefaultConfig")
@@ -120,32 +117,29 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	}
 
 	client := Client{
+		MaxDelay:       10 * time.Minute,
 		QueueName:      queryMap["queue-name"][0],
 		ReconnectDelay: 2 * time.Second,
-		ReInitDelay:    2 * time.Second,
 		ResendDelay:    1 * time.Second,
 
-		done:        make(chan bool),
-		logger:      log.New(os.Stdout, "", log.LstdFlags),
-		notifyReady: make(chan interface{}),
-		sqsClient:   sqs.NewFromConfig(cfg),
+		done:      make(chan bool),
+		logger:    log.New(os.Stdout, "", log.LstdFlags),
+		sqsClient: sqs.NewFromConfig(cfg),
 	}
 	// Get the URL for the queue
 	input := &sqs.GetQueueUrlInput{
 		QueueName: &queryMap["queue-name"][0],
 	}
-	fmt.Println("GetQueueURL")
+
 	sqsURL, err := GetQueueURL(ctx, client.sqsClient, input)
 	if err != nil {
-		log.Printf("error getting the queue URL: %v", err)
+		client.logger.Printf("error getting the queue URL: %v", err)
 		return nil, SQSError{util.WrapError(err, fmt.Sprintf("unable to retrieve SQS URL from: %s", urlString))}
 	}
 	client.sqsURL = sqsURL
-	fmt.Println("SQS URL:", sqsURL)
+
 	client.reconnectDelay = client.ReconnectDelay
-	client.reInitDelay = client.ReInitDelay
 	client.resendDelay = client.ResendDelay
-	// client.notifyReady <- struct{}{}
 	client.isReady = true
 	client.logger.Println("Setup!")
 	return &client, nil
@@ -186,7 +180,11 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 // progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	return delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
+	newDelay := delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
+	if newDelay > client.MaxDelay {
+		return client.MaxDelay
+	}
+	return newDelay
 }
 
 // ----------------------------------------------------------------------------
@@ -217,6 +215,8 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 			continue
 			// return err
 		} else {
+			//reset the resend delay
+			client.resendDelay = client.ResendDelay
 			return nil
 		}
 	}
@@ -266,6 +266,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 			if err != nil {
 				client.logger.Println("receiveMessage failed")
 				time.Sleep(client.reconnectDelay)
+				client.reconnectDelay = client.progressiveDelay(client.resendDelay)
 				continue
 			}
 			select {
@@ -277,6 +278,8 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 				for _, m := range output.Messages {
 					outChan <- &m
 				}
+				// reset the reconnectDelay
+				client.reconnectDelay = client.ReconnectDelay
 			}
 		}
 	}()
