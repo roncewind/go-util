@@ -44,14 +44,13 @@ type Client struct {
 	ResendDelay    time.Duration
 	RoutingKey     string
 
-	done    chan bool
 	isReady bool
 	logger  *log.Logger
 	// current delay durations
 	reconnectDelay time.Duration
 	resendDelay    time.Duration
 
-	region    string //TODO: configure region
+	region    string //TODO: configure region??
 	sqsClient *sqs.Client
 	sqsURL    *sqs.GetQueueUrlOutput
 }
@@ -122,7 +121,6 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 		ReconnectDelay: 2 * time.Second,
 		ResendDelay:    1 * time.Second,
 
-		done:      make(chan bool),
 		logger:    log.New(os.Stdout, "", log.LstdFlags),
 		sqsClient: sqs.NewFromConfig(cfg),
 	}
@@ -206,8 +204,6 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 			select {
 			case <-ctx.Done():
 				return errShutdown
-			case <-client.done:
-				return errShutdown //TODO:  error message to include messageId?
 			case <-time.After(client.resendDelay):
 				//TODO:  resend forever???
 				client.resendDelay = client.progressiveDelay(client.resendDelay)
@@ -272,8 +268,6 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 			select {
 			case <-ctx.Done():
 				return
-			case <-client.done:
-				return
 			default:
 				for _, m := range output.Messages {
 					outChan <- &m
@@ -303,18 +297,5 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 	}
 
 	fmt.Println("Deleted message from queue with URL ", *client.sqsURL.QueueUrl)
-	return nil
-}
-
-// ----------------------------------------------------------------------------
-
-// Close will cleanly shutdown the channel and connection.
-func (client *Client) Close() error {
-	if !client.isReady {
-		return errAlreadyClosed
-	}
-	close(client.done)
-	close(client.notifyReady)
-	client.isReady = false
 	return nil
 }
