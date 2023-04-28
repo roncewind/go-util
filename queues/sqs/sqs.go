@@ -53,6 +53,7 @@ type Client struct {
 	reInitDelay    time.Duration
 	resendDelay    time.Duration
 
+	region    string //TODO: configure region
 	sqsClient *sqs.Client
 	sqsURL    *sqs.GetQueueUrlOutput
 }
@@ -112,7 +113,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	}
 
 	fmt.Println("LoadDefaultConfig")
-	// load the default aws config along with custom resolver.
+	// load the default aws config
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		log.Fatalf("configuration error: %v", err)
