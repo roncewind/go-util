@@ -17,25 +17,6 @@ import (
 	"github.com/roncewind/go-util/util"
 )
 
-// TODO: use interface to mock SQS in tests
-type SQSQueueAPI interface {
-	DeleteMessage(ctx context.Context,
-		params *sqs.DeleteMessageInput,
-		optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-
-	GetQueueUrl(ctx context.Context,
-		params *sqs.GetQueueUrlInput,
-		optFns ...func(*sqs.Options)) (*sqs.GetQueueUrlOutput, error)
-
-	SendMessage(ctx context.Context,
-		params *sqs.SendMessageInput,
-		optFns ...func(*sqs.Options)) (*sqs.SendMessageOutput, error)
-
-	ReceiveMessage(ctx context.Context,
-		params *sqs.ReceiveMessageInput,
-		optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
-}
-
 type Client struct {
 	QueueName string
 	// desired / default delay durations
@@ -63,34 +44,6 @@ var (
 	errAlreadyClosed = SQSError{util.WrapError(nil, "already closed: not connected to the server")}
 	errShutdown      = SQSError{util.WrapError(nil, "client is shutting down")}
 )
-
-// ----------------------------------------------------------------------------
-func GetQueueURL(c context.Context, api SQSQueueAPI, input *sqs.GetQueueUrlInput) (*sqs.GetQueueUrlOutput, error) {
-	return api.GetQueueUrl(c, input)
-}
-
-func SendMessage(c context.Context, api SQSQueueAPI, input *sqs.SendMessageInput) (*sqs.SendMessageOutput, error) {
-	return api.SendMessage(c, input)
-}
-
-func ReceiveMessage(c context.Context, api SQSQueueAPI, input *sqs.ReceiveMessageInput) (*sqs.ReceiveMessageOutput, error) {
-	return api.ReceiveMessage(c, input)
-}
-
-// RemoveMessage deletes a message from an Amazon SQS queue.
-// Inputs:
-//
-//	c is the context of the method call, which includes the AWS Region.
-//	api is the interface that defines the method call.
-//	input defines the input arguments to the service call.
-//
-// Output:
-//
-//	If success, a DeleteMessageOutput object containing the result of the service call and nil.
-//	Otherwise, nil and an error from the call to DeleteMessage.
-func RemoveMessage(c context.Context, api SQSQueueAPI, input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
-	return api.DeleteMessage(c, input)
-}
 
 // ----------------------------------------------------------------------------
 
@@ -127,7 +80,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 		QueueName: &queryMap["queue-name"][0],
 	}
 
-	sqsURL, err := GetQueueURL(ctx, client.sqsClient, input)
+	sqsURL, err := client.sqsClient.GetQueueUrl(ctx, input)
 	if err != nil {
 		client.logger.Printf("error getting the queue URL: %v", err)
 		return nil, SQSError{util.WrapError(err, fmt.Sprintf("unable to retrieve SQS URL from: %s", urlString))}
@@ -159,7 +112,7 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 		QueueUrl:    client.sqsURL.QueueUrl,
 	}
 
-	resp, err := SendMessage(ctx, client.sqsClient, messageInput)
+	resp, err := client.sqsClient.SendMessage(ctx, messageInput)
 	if err != nil {
 		client.logger.Printf("error sending the message: %v", err)
 		return
@@ -228,7 +181,7 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 		VisibilityTimeout:     int32(10),
 	}
 
-	msg, err := ReceiveMessage(ctx, client.sqsClient, receiveInput)
+	msg, err := client.sqsClient.ReceiveMessage(ctx, receiveInput)
 	if err != nil {
 		client.logger.Printf("error receiving messages: %v", err)
 		return nil, SQSError{util.WrapError(err, "error receiving messages")}
@@ -286,7 +239,7 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 		ReceiptHandle: msg.ReceiptHandle,
 	}
 
-	_, err := RemoveMessage(ctx, client.sqsClient, deleteMessageInput)
+	_, err := client.sqsClient.DeleteMessage(ctx, deleteMessageInput)
 	if err != nil {
 		fmt.Println("Got an error deleting the message:")
 		fmt.Println(err)
