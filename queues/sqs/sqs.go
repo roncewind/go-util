@@ -59,7 +59,6 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 		return nil, SQSError{util.WrapError(err, "please define a queue-name as query parameters")}
 	}
 
-	fmt.Println("LoadDefaultConfig")
 	// load the default aws config
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -241,11 +240,11 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 
 	_, err := client.sqsClient.DeleteMessage(ctx, deleteMessageInput)
 	if err != nil {
-		fmt.Println("Got an error deleting the message:")
-		fmt.Println(err)
+		client.logger.Println("Got an error deleting the message:")
+		client.logger.Println(err)
 		return err
 	}
 
-	fmt.Println("Deleted message from queue with URL ", *client.sqsURL.QueueUrl)
+	client.logger.Println("Deleted message from queue with URL ", *client.sqsURL.QueueUrl)
 	return nil
 }
