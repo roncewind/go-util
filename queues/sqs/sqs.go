@@ -62,8 +62,6 @@ type SQSError struct {
 var (
 	errAlreadyClosed = SQSError{util.WrapError(nil, "already closed: not connected to the server")}
 	errShutdown      = SQSError{util.WrapError(nil, "client is shutting down")}
-	// errAlreadyClosed = errors.New("already closed: not connected to the server")
-	// errShutdown      = errors.New("client is shutting down")
 )
 
 // ----------------------------------------------------------------------------
@@ -163,12 +161,11 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 
 	resp, err := SendMessage(ctx, client.sqsClient, messageInput)
 	if err != nil {
-		log.Printf("error sending the message: %v", err)
+		client.logger.Printf("error sending the message: %v", err)
 		return
 	}
 
-	log.Printf("AWS response Message ID: %s", *resp.MessageId)
-	// log.Println(resp.ResultMetadata)
+	client.logger.Printf("AWS response Message ID: %s", *resp.MessageId)
 
 	return nil
 }
@@ -233,16 +230,16 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 
 	msg, err := ReceiveMessage(ctx, client.sqsClient, receiveInput)
 	if err != nil {
-		log.Printf("error receiving messages: %v", err)
+		client.logger.Printf("error receiving messages: %v", err)
 		return nil, SQSError{util.WrapError(err, "error receiving messages")}
 	}
 
 	if msg.Messages == nil {
-		log.Printf("No messages found")
+		client.logger.Printf("No messages found")
 		return nil, SQSError{util.WrapError(nil, "No messages.")}
 	}
 
-	log.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
+	client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
 	return msg, nil
 }
 
