@@ -148,18 +148,9 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 			i++
 		}
 	}
-	count := 0
-	for _, msg := range messages {
-		if msg.MessageBody != nil {
-			count++
-		}
-	}
-	fmt.Println("messages created:", i)
-	fmt.Println("records send:", i)
-
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
-		Entries:  messages[0:count],
+		Entries:  messages[0:i],
 		QueueUrl: client.sqsURL.QueueUrl,
 	}
 
@@ -233,6 +224,7 @@ func (client *Client) getRecordBatch(ctx context.Context, recordchan <-chan queu
 	i := 0
 	for record := range util.OrDone(ctx, recordchan) {
 		records[i] = record
+		fmt.Println("record:", i)
 		i++
 		if i >= 10 {
 			return &records, false
@@ -252,29 +244,52 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		// <-client.notifyReady
 		return SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
-
+	i := 0
 	for {
-		records, done := client.getRecordBatch(ctx, recordchan)
-		err := client.sendRecordBatch(ctx, *records)
-		if err != nil {
-			client.logger.Println("sendRecordBatch error:", err)
-			// 	client.logger.Println("Push Batch failed. Retrying in", client.resendDelay) //TODO:  debug or trace logging, add messageId
-			// 	select {
-			// 	case <-ctx.Done():
-			// 		return errShutdown
-			// 	case <-time.After(client.resendDelay):
-			// 		//TODO:  resend forever???
-			// 		client.resendDelay = client.progressiveDelay(client.resendDelay)
-			// 	}
-			// 	continue
-			// 	// return err
-			// } else {
-			// 	//reset the resend delay
-			// 	client.resendDelay = client.ResendDelay
-		}
-		if done {
+		records := make([]queues.Record, 10)
+		select {
+		case <-ctx.Done():
 			return nil
+		case record, ok := <-recordchan:
+			if !ok {
+				err := client.sendRecordBatch(ctx, records)
+				if err != nil {
+					client.logger.Println("last batch, sendRecordBatch error:", err)
+				}
+				return nil
+			} else {
+				records[i] = record
+				i++
+				if i >= 10 {
+					err := client.sendRecordBatch(ctx, records)
+					if err != nil {
+						client.logger.Println("sendRecordBatch error:", err)
+					}
+					i = 0
+				}
+			}
 		}
+		// records, done := client.getRecordBatch(ctx, recordchan)
+		// err := client.sendRecordBatch(ctx, *records)
+		// if err != nil {
+		// 	client.logger.Println("sendRecordBatch error:", err)
+		// 	client.logger.Println("Push Batch failed. Retrying in", client.resendDelay) //TODO:  debug or trace logging, add messageId
+		// 	select {
+		// 	case <-ctx.Done():
+		// 		return errShutdown
+		// 	case <-time.After(client.resendDelay):
+		// 		//TODO:  resend forever???
+		// 		client.resendDelay = client.progressiveDelay(client.resendDelay)
+		// 	}
+		// 	continue
+		// 	// return err
+		// } else {
+		// 	//reset the resend delay
+		// 	client.resendDelay = client.ResendDelay
+		// }
+		// if done {
+		// 	return nil
+		// }
 	}
 }
 
