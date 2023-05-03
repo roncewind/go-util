@@ -222,24 +222,8 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 
 // ----------------------------------------------------------------------------
 
-// batch up record for processing
-func (client *Client) getRecordBatch(ctx context.Context, recordchan <-chan queues.Record) (*[]queues.Record, bool) {
-	records := make([]queues.Record, 10)
-	i := 0
-	for record := range util.OrDone(ctx, recordchan) {
-		records[i] = record
-		i++
-		if i >= 10 {
-			return &records, false
-		}
-	}
-	return &records, true
-}
-
-// ----------------------------------------------------------------------------
-
 // Push will push data onto the queue and wait for a response.
-// TODO: work on resend with delay...
+// TODO: work on resend with delay????
 func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Record) error {
 
 	if !client.isReady {
@@ -280,27 +264,6 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 				}
 			}
 		}
-		// records, done := client.getRecordBatch(ctx, recordchan)
-		// err := client.sendRecordBatch(ctx, *records)
-		// if err != nil {
-		// 	client.logger.Println("sendRecordBatch error:", err)
-		// 	client.logger.Println("Push Batch failed. Retrying in", client.resendDelay) //TODO:  debug or trace logging, add messageId
-		// 	select {
-		// 	case <-ctx.Done():
-		// 		return errShutdown
-		// 	case <-time.After(client.resendDelay):
-		// 		//TODO:  resend forever???
-		// 		client.resendDelay = client.progressiveDelay(client.resendDelay)
-		// 	}
-		// 	continue
-		// 	// return err
-		// } else {
-		// 	//reset the resend delay
-		// 	client.resendDelay = client.ResendDelay
-		// }
-		// if done {
-		// 	return nil
-		// }
 	}
 }
 
