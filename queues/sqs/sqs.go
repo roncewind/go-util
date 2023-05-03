@@ -214,17 +214,17 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 // ----------------------------------------------------------------------------
 
 // batch up record for processing
-func (client *Client) getRecordBatch(ctx context.Context, recordchan <-chan queues.Record) *[]queues.Record {
+func (client *Client) getRecordBatch(ctx context.Context, recordchan <-chan queues.Record) (*[]queues.Record, bool) {
 	records := make([]queues.Record, 10)
 	i := 0
 	for record := range util.OrDone(ctx, recordchan) {
 		records[i] = record
 		i++
 		if i >= 10 {
-			return &records
+			return &records, false
 		}
 	}
-	return &records
+	return &records, true
 }
 
 // ----------------------------------------------------------------------------
@@ -240,7 +240,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 	}
 
 	for {
-		records := client.getRecordBatch(ctx, recordchan)
+		records, done := client.getRecordBatch(ctx, recordchan)
 		err := client.sendRecordBatch(ctx, *records)
 		if err != nil {
 			client.logger.Println("Push Batch failed. Retrying in", client.resendDelay) //TODO:  debug or trace logging, add messageId
@@ -256,6 +256,8 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		} else {
 			//reset the resend delay
 			client.resendDelay = client.ResendDelay
+		}
+		if done {
 			return nil
 		}
 	}
