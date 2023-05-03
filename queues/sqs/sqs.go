@@ -128,11 +128,12 @@ func (client *Client) sendRecord(ctx context.Context, record queues.Record) (err
 func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Record) (err error) {
 	var messages []types.SendMessageBatchRequestEntry
 	messages = make([]types.SendMessageBatchRequestEntry, len(records))
-
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	id := r.Intn(10000)
 	for i, record := range records {
 		messages[i] = types.SendMessageBatchRequestEntry{
 			DelaySeconds: 0,
-			Id:           aws.String(record.GetMessageId()),
+			Id:           aws.String(fmt.Sprintf("%d", id+i)),
 			MessageAttributes: map[string]types.MessageAttributeValue{
 				"MessageID": {
 					DataType:    aws.String("String"),
