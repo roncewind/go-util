@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -89,20 +90,40 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
 	client.isReady = true
+	fmt.Println("DLQ ARN:", client.getDeadLetterQueueURL(ctx))
+	client.logger.Println("Setup!")
+	return &client, nil
+}
 
+// ----------------------------------------------------------------------------
+
+func (client *Client) getDeadLetterQueueURL(ctx context.Context) string {
 	params := &sqs.GetQueueAttributesInput{
 		QueueUrl: aws.String(*client.sqsURL.QueueUrl),
 		AttributeNames: []types.QueueAttributeName{
-			types.QueueAttributeNameAll,
+			// types.QueueAttributeNameAll,
+			types.QueueAttributeNameRedrivePolicy,
 		},
 	}
 	queueAttributes, _ := client.sqsClient.GetQueueAttributes(ctx, params)
+
 	for attrib, value := range queueAttributes.Attributes {
 		fmt.Println(attrib, ":", value)
 	}
+	redrive := queueAttributes.Attributes[string(types.QueueAttributeNameRedrivePolicy)]
+	fmt.Println(redrive)
 
-	client.logger.Println("Setup!")
-	return &client, nil
+	var redrivePolicy RedrivePolicy
+	err := json.Unmarshal([]byte(redrive), &redrivePolicy)
+	if err != nil {
+		return ""
+	}
+	return redrivePolicy.deadLetterQueueARN
+}
+
+// ----------------------------------------------------------------------------
+type RedrivePolicy struct {
+	deadLetterQueueARN string `json:"deadLetterTargetArn"`
 }
 
 // ----------------------------------------------------------------------------
