@@ -256,7 +256,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 			return nil
 		case record, ok := <-recordchan:
 			if !ok {
-				if len(records) > 0 {
+				if i > 0 {
 					batches++
 					err := client.sendRecordBatch(ctx, records)
 					if err != nil {
