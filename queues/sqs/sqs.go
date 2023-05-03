@@ -108,18 +108,17 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 			types.QueueAttributeNameRedrivePolicy,
 		},
 	}
-	queueAttributes, _ := client.sqsClient.GetQueueAttributes(ctx, params)
-
-	for attrib, value := range queueAttributes.Attributes {
-		fmt.Println(attrib, ":", value)
+	queueAttributes, err := client.sqsClient.GetQueueAttributes(ctx, params)
+	if err != nil {
+		client.logger.Println("Unable to retrieve queue redrive policy", err)
+		return
 	}
 	redrive := queueAttributes.Attributes[string(types.QueueAttributeNameRedrivePolicy)]
-	fmt.Println(redrive)
-
 	var redrivePolicy redrivePolicy
-	err := json.Unmarshal([]byte(redrive), &redrivePolicy)
+	err = json.Unmarshal([]byte(redrive), &redrivePolicy)
 	if err != nil {
 		fmt.Println("error unmarshal redrive policy", err)
+		return
 	}
 	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
 	client.deadLetterQueueURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
