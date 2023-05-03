@@ -124,6 +124,49 @@ func (client *Client) sendMessage(ctx context.Context, record queues.Record) (er
 
 // ----------------------------------------------------------------------------
 
+// send a message to a queue.
+func (client *Client) sendMessages(ctx context.Context, records []queues.Record) (err error) {
+	var messages []types.SendMessageBatchRequestEntry
+	messages = make([]types.SendMessageBatchRequestEntry, len(records))
+
+	for i, record := range records {
+		messages[i] = types.SendMessageBatchRequestEntry{
+			DelaySeconds: 0,
+			Id:           aws.String(record.GetMessageId()),
+			MessageAttributes: map[string]types.MessageAttributeValue{
+				"MessageID": {
+					DataType:    aws.String("String"),
+					StringValue: aws.String(record.GetMessageId()),
+				},
+			},
+			MessageBody: aws.String(record.GetMessage()), //TODO?  aws.String(string(utils.Base64Encode([]byte(body)))),
+		}
+	}
+	// Send a message with attributes to the given queue
+	messageInput := &sqs.SendMessageBatchInput{
+		Entries:  messages,
+		QueueUrl: client.sqsURL.QueueUrl,
+	}
+
+	resp, err := client.sqsClient.SendMessageBatch(ctx, messageInput)
+	if err != nil {
+		client.logger.Printf("error sending the message batch: %v", err)
+		return
+	}
+	if len(resp.Failed) > 0 {
+		for _, fail := range resp.Failed {
+			client.logger.Println("error sending the message in batch:", fail.Message)
+			client.logger.Println("message id:", fail.Id)
+		}
+	}
+
+	client.logger.Println("Successfully sent:", len(resp.Successful), "messages")
+
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+
 // progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
