@@ -148,6 +148,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 			i++
 		}
 	}
+	fmt.Println("send message batch of", i)
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
 		Entries:  messages[0:i],
@@ -245,6 +246,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		return SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
 	i := 0
+	batches := 0
 	for {
 		records := make([]queues.Record, 10)
 		select {
@@ -257,13 +259,14 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 				if err != nil {
 					client.logger.Println("last batch, sendRecordBatch error:", err)
 				}
+				fmt.Println("sent", batches, "batches")
 				return nil
 			} else {
-				fmt.Println("record:", i)
 				records[i] = record
 				i++
 				if i >= 10 {
-					fmt.Println("send batch of", i)
+					fmt.Println("sent batch of", i)
+					batches++
 					err := client.sendRecordBatch(ctx, records)
 					if err != nil {
 						client.logger.Println("sendRecordBatch error:", err)
