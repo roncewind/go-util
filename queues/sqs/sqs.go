@@ -279,7 +279,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 						client.logger.Println("sendRecordBatch error:", err)
 					}
 					i = 0
-					records = records[:0]
+					records = make([]queues.Record, 10)
 				}
 			}
 		}
