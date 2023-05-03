@@ -131,6 +131,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	id := r.Intn(10000)
 	for i, record := range records {
+		fmt.Println("record:", record)
 		messages[i] = types.SendMessageBatchRequestEntry{
 			DelaySeconds: 0,
 			Id:           aws.String(fmt.Sprintf("%d", id+i)),
