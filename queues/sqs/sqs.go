@@ -257,6 +257,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		case <-ctx.Done():
 			return nil
 		case record, ok := <-recordchan:
+
 			if !ok {
 				fmt.Println("recordchan not ok")
 				err := client.sendRecordBatch(ctx, records)
@@ -266,6 +267,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 				fmt.Println("sent", batches, "batches")
 				return nil
 			} else {
+				fmt.Println("record[", i, "] from recordchan:", record != nil)
 				records[i] = record
 				i++
 				if i >= 10 {
