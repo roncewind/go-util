@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -119,13 +120,16 @@ func (client *Client) getRedrivePolicy(ctx context.Context) RedrivePolicy {
 		fmt.Println("error unmarshal redrive policy", err)
 		//TODO  something
 	}
+	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
+	redrivePolicy.DeadLetterTargetURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
 	return redrivePolicy
 }
 
 // ----------------------------------------------------------------------------
 type RedrivePolicy struct {
 	DeadLetterTargetArn string `json:"deadLetterTargetArn"`
-	MaxReceiveCount     int    `json:"maxReceiveCount"`
+	DeadLetterTargetURL string
+	MaxReceiveCount     int `json:"maxReceiveCount"`
 }
 
 // ----------------------------------------------------------------------------
