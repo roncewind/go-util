@@ -132,7 +132,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	id := r.Intn(10000)
 	i := 0
 	for _, record := range records {
-		fmt.Println("record:", record)
+		// fmt.Println("record:", record)
 		if record != nil {
 			messages[i] = types.SendMessageBatchRequestEntry{
 				DelaySeconds: 0,
@@ -229,7 +229,6 @@ func (client *Client) getRecordBatch(ctx context.Context, recordchan <-chan queu
 	i := 0
 	for record := range util.OrDone(ctx, recordchan) {
 		records[i] = record
-		fmt.Println("record:", i)
 		i++
 		if i >= 10 {
 			return &records, false
