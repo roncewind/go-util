@@ -33,9 +33,10 @@ type Client struct {
 	reconnectDelay time.Duration
 	resendDelay    time.Duration
 
-	region    string //TODO: configure region??
-	sqsClient *sqs.Client
-	sqsURL    *sqs.GetQueueUrlOutput
+	deadLetterQueueURL string
+	region             string //TODO: configure region??
+	sqsClient          *sqs.Client
+	sqsURL             *sqs.GetQueueUrlOutput
 }
 
 type SQSError struct {
@@ -90,15 +91,17 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.logger.Println("sqsURL:", sqsURL)
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
+	client.getRedrivePolicy(ctx)
 	client.isReady = true
-	fmt.Println("RedrivePolicy:", client.getRedrivePolicy(ctx))
+
+	fmt.Println("dead letter queue URL:", client.deadLetterQueueURL)
 	client.logger.Println("Setup!")
 	return &client, nil
 }
 
 // ----------------------------------------------------------------------------
 
-func (client *Client) getRedrivePolicy(ctx context.Context) RedrivePolicy {
+func (client *Client) getRedrivePolicy(ctx context.Context) {
 	params := &sqs.GetQueueAttributesInput{
 		QueueUrl: aws.String(*client.sqsURL.QueueUrl),
 		AttributeNames: []types.QueueAttributeName{
@@ -114,22 +117,19 @@ func (client *Client) getRedrivePolicy(ctx context.Context) RedrivePolicy {
 	redrive := queueAttributes.Attributes[string(types.QueueAttributeNameRedrivePolicy)]
 	fmt.Println(redrive)
 
-	var redrivePolicy RedrivePolicy
+	var redrivePolicy redrivePolicy
 	err := json.Unmarshal([]byte(redrive), &redrivePolicy)
 	if err != nil {
 		fmt.Println("error unmarshal redrive policy", err)
-		//TODO  something
 	}
 	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
-	redrivePolicy.DeadLetterTargetURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
-	return redrivePolicy
+	client.deadLetterQueueURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
 }
 
 // ----------------------------------------------------------------------------
-type RedrivePolicy struct {
+type redrivePolicy struct {
 	DeadLetterTargetArn string `json:"deadLetterTargetArn"`
-	DeadLetterTargetURL string
-	MaxReceiveCount     int `json:"maxReceiveCount"`
+	MaxReceiveCount     int    `json:"maxReceiveCount"`
 }
 
 // ----------------------------------------------------------------------------
