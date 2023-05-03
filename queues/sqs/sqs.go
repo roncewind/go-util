@@ -148,10 +148,10 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 			i++
 		}
 	}
-	i = 0
+	count := 0
 	for _, msg := range messages {
-		if msg.MessageBody != nil && msg.Id != nil {
-			i++
+		if msg.MessageBody != nil {
+			count++
 		}
 	}
 	fmt.Println("messages created:", i)
@@ -159,7 +159,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
-		Entries:  messages,
+		Entries:  messages[0:count],
 		QueueUrl: client.sqsURL.QueueUrl,
 	}
 
