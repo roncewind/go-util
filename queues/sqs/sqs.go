@@ -148,6 +148,10 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 			i++
 		}
 	}
+	if len(messages) != len(records) {
+		fmt.Printf("messages(%d) != records(%d)\n", len(messages), len(records))
+	}
+
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
 		Entries:  messages,
