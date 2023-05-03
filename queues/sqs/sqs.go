@@ -251,8 +251,8 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 	}
 	i := 0
 	batches := 0
+	records := make([]queues.Record, 10)
 	for {
-		records := make([]queues.Record, 10)
 		select {
 		case <-ctx.Done():
 			return nil
@@ -280,6 +280,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 						client.logger.Println("sendRecordBatch error:", err)
 					}
 					i = 0
+					records = records[:0]
 				}
 			}
 		}
