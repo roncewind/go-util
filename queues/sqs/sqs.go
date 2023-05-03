@@ -127,10 +127,11 @@ func (client *Client) sendRecord(ctx context.Context, record queues.Record) (err
 // send a message to a queue.
 func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Record) (err error) {
 	var messages []types.SendMessageBatchRequestEntry
-	messages = make([]types.SendMessageBatchRequestEntry, len(records))
+	messages = make([]types.SendMessageBatchRequestEntry, 0, len(records))
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	id := r.Intn(10000)
-	for i, record := range records {
+	i := 0
+	for _, record := range records {
 		// fmt.Println("record:", record)
 		if record != nil {
 			messages[i] = types.SendMessageBatchRequestEntry{
@@ -144,8 +145,8 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 				},
 				MessageBody: aws.String(record.GetMessage()), //TODO?  aws.String(string(utils.Base64Encode([]byte(body)))),
 			}
+			i++
 		}
-
 	}
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
