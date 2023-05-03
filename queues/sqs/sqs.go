@@ -100,6 +100,8 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 
 // ----------------------------------------------------------------------------
 
+// Pulls the SQS queues Redrive Policy from AWS and sets the dead letter
+// queue URL in the client
 func (client *Client) getRedrivePolicy(ctx context.Context) {
 	params := &sqs.GetQueueAttributesInput{
 		QueueUrl: aws.String(*client.sqsURL.QueueUrl),
@@ -117,7 +119,7 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 	var redrivePolicy redrivePolicy
 	err = json.Unmarshal([]byte(redrive), &redrivePolicy)
 	if err != nil {
-		fmt.Println("error unmarshal redrive policy", err)
+		fmt.Println("error unmarshalling redrive policy", err)
 		return
 	}
 	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
@@ -125,6 +127,8 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 }
 
 // ----------------------------------------------------------------------------
+
+// internal struct to parse the AWS Redrive Policy attribute JSON
 type redrivePolicy struct {
 	DeadLetterTargetArn string `json:"deadLetterTargetArn"`
 	MaxReceiveCount     int    `json:"maxReceiveCount"`
