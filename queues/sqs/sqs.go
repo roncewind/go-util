@@ -156,7 +156,6 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	resp, err := client.sqsClient.SendMessageBatch(ctx, messageInput)
 	if err != nil {
 		client.logger.Printf("error sending the message batch: %v", err)
-		return
 	}
 	if len(resp.Failed) > 0 {
 		for _, fail := range resp.Failed {
@@ -167,7 +166,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 
 	client.logger.Println("Successfully sent:", len(resp.Successful), "messages")
 
-	return nil
+	return
 }
 
 // ----------------------------------------------------------------------------
