@@ -85,7 +85,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 		return nil, SQSError{util.WrapError(err, fmt.Sprintf("unable to retrieve SQS URL from: %s", urlString))}
 	}
 	client.sqsURL = sqsURL
-
+	client.logger.Println("sqsURL:", sqsURL)
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
 	client.isReady = true
