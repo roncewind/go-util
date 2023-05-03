@@ -148,7 +148,6 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 			i++
 		}
 	}
-	fmt.Println("send message batch of", i)
 	// bail of we have no messages to send
 	if i <= 0 {
 		return
@@ -256,24 +255,22 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		case <-ctx.Done():
 			return nil
 		case record, ok := <-recordchan:
-
 			if !ok {
-				fmt.Println("recordchan not ok")
-				err := client.sendRecordBatch(ctx, records)
-				if err != nil {
-					client.logger.Println("last batch, sendRecordBatch error:", err)
+				if len(records) > 0 {
+					batches++
+					err := client.sendRecordBatch(ctx, records)
+					if err != nil {
+						client.logger.Println("last batch, sendRecordBatch error:", err)
+					}
 				}
 				fmt.Println("sent", batches, "batches")
 				return nil
 			} else {
-				fmt.Println("record[", i, "] from recordchan:", record != nil)
 				records[i] = record
-				fmt.Println("records[", i, "]:", records[i] != nil)
 				i++
 				if i >= 10 {
 					fmt.Println("sent batch of", i)
 					batches++
-					fmt.Println("records:", records)
 					err := client.sendRecordBatch(ctx, records)
 					if err != nil {
 						client.logger.Println("sendRecordBatch error:", err)
