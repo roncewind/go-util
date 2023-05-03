@@ -89,6 +89,18 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
 	client.isReady = true
+
+	params := &sqs.GetQueueAttributesInput{
+		QueueUrl: aws.String(*client.sqsURL.QueueUrl),
+		AttributeNames: []types.QueueAttributeName{
+			types.QueueAttributeNameAll,
+		},
+	}
+	queueAttributes, _ := client.sqsClient.GetQueueAttributes(ctx, params)
+	for attrib, value := range queueAttributes.Attributes {
+		fmt.Println(attrib, ":", value)
+	}
+
 	client.logger.Println("Setup!")
 	return &client, nil
 }
