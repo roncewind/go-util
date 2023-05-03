@@ -88,13 +88,12 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 		return nil, SQSError{util.WrapError(err, fmt.Sprintf("unable to retrieve SQS URL from: %s", urlString))}
 	}
 	client.sqsURL = sqsURL
-	client.logger.Println("sqsURL:", sqsURL)
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
 	client.getRedrivePolicy(ctx)
 	client.isReady = true
-
-	fmt.Println("dead letter queue URL:", client.deadLetterQueueURL)
+	client.logger.Println("sqsURL:", sqsURL)
+	client.logger.Println("dead letter queue URL:", client.deadLetterQueueURL)
 	client.logger.Println("Setup!")
 	return &client, nil
 }
