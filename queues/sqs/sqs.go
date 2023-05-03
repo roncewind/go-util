@@ -127,7 +127,7 @@ func (client *Client) sendRecord(ctx context.Context, record queues.Record) (err
 // send a message to a queue.
 func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Record) (err error) {
 	var messages []types.SendMessageBatchRequestEntry
-	messages = make([]types.SendMessageBatchRequestEntry, 0, len(records))
+	messages = make([]types.SendMessageBatchRequestEntry, len(records))
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	id := r.Intn(10000)
 	i := 0
