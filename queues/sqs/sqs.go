@@ -158,14 +158,15 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	if err != nil {
 		client.logger.Printf("error sending the message batch: %v", err)
 	}
-	if len(resp.Failed) > 0 {
-		for _, fail := range resp.Failed {
-			client.logger.Println("error sending the message in batch:", fail.Message)
-			client.logger.Println("message id:", fail.Id)
+	if resp != nil {
+		if len(resp.Failed) > 0 {
+			for _, fail := range resp.Failed {
+				client.logger.Println("error sending the message in batch:", fail.Message)
+				client.logger.Println("message id:", fail.Id)
+			}
 		}
+		client.logger.Println("Successfully sent:", len(resp.Successful), "messages")
 	}
-
-	client.logger.Println("Successfully sent:", len(resp.Successful), "messages")
 
 	return
 }
