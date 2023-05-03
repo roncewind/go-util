@@ -131,18 +131,21 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	id := r.Intn(10000)
 	for i, record := range records {
-		fmt.Println("record:", record)
-		messages[i] = types.SendMessageBatchRequestEntry{
-			DelaySeconds: 0,
-			Id:           aws.String(fmt.Sprintf("%d", id+i)),
-			MessageAttributes: map[string]types.MessageAttributeValue{
-				"MessageID": {
-					DataType:    aws.String("String"),
-					StringValue: aws.String(record.GetMessageId()),
+		// fmt.Println("record:", record)
+		if record != nil {
+			messages[i] = types.SendMessageBatchRequestEntry{
+				DelaySeconds: 0,
+				Id:           aws.String(fmt.Sprintf("%d", id+i)),
+				MessageAttributes: map[string]types.MessageAttributeValue{
+					"MessageID": {
+						DataType:    aws.String("String"),
+						StringValue: aws.String(record.GetMessageId()),
+					},
 				},
-			},
-			MessageBody: aws.String(record.GetMessage()), //TODO?  aws.String(string(utils.Base64Encode([]byte(body)))),
+				MessageBody: aws.String(record.GetMessage()), //TODO?  aws.String(string(utils.Base64Encode([]byte(body)))),
+			}
 		}
+
 	}
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
