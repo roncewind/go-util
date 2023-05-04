@@ -236,7 +236,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 // progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	newDelay := delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
+	newDelay := delay + time.Duration(r.Intn(int(delay*time.Second)))*time.Second
 	fmt.Println("MaxDelay:", client.MaxDelay)
 	fmt.Println("newDelay:", newDelay)
 	if newDelay > client.MaxDelay {
