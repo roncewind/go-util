@@ -95,9 +95,10 @@ func (client *Client) getQueueURL(ctx context.Context, urlString string) error {
 		client.QueueURL = &urlString
 	} else {
 		client.QueueName = queryMap["queue-name"][0]
+		fmt.Println("client.QueueName = ", client.QueueName)
 		// Get the URL for the queue
 		input := &sqs.GetQueueUrlInput{
-			QueueName: &queryMap["queue-name"][0],
+			QueueName: &client.QueueName,
 		}
 		sqsURL, err := client.sqsClient.GetQueueUrl(ctx, input)
 		if err != nil {
