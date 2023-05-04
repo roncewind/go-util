@@ -237,6 +237,8 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	newDelay := delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
+	fmt.Println("MaxDelay:", client.MaxDelay)
+	fmt.Println("newDelay:", newDelay)
 	if newDelay > client.MaxDelay {
 		return client.MaxDelay
 	}
@@ -336,7 +338,7 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 		client.logger.Printf("error receiving messages: %v", err)
 		return nil, SQSError{util.WrapError(err, "error receiving messages")}
 	}
-	fmt.Println("msg:", msg)
+	fmt.Println("msg.Messages:", msg.Messages)
 	if msg.Messages == nil || len(msg.Messages) <= 0 {
 		client.logger.Printf("No messages found")
 		return nil, SQSError{util.WrapError(nil, "No messages.")}
