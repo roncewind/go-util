@@ -356,7 +356,6 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 		for {
 			output, err := client.receiveMessage(ctx)
 			if err != nil {
-				client.logger.Println("receiveMessage failed")
 				time.Sleep(client.reconnectDelay)
 				client.reconnectDelay = client.progressiveDelay(client.reconnectDelay)
 			} else {
