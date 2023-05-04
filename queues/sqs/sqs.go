@@ -96,7 +96,6 @@ func (client *Client) getQueueURL(ctx context.Context, urlString string) error {
 		client.QueueURL = &urlString
 	} else {
 		client.QueueName = queryMap["queue-name"][0]
-		fmt.Println("client.QueueName = ", client.QueueName)
 		// Get the URL for the queue
 		input := &sqs.GetQueueUrlInput{
 			QueueName: &client.QueueName,
@@ -108,7 +107,6 @@ func (client *Client) getQueueURL(ctx context.Context, urlString string) error {
 		}
 		client.sqsURL = sqsURL
 		client.QueueURL = sqsURL.QueueUrl
-		fmt.Println(sqsURL.ResultMetadata)
 	}
 	return nil
 }
@@ -134,7 +132,7 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 	var redrivePolicy redrivePolicy
 	err = json.Unmarshal([]byte(redrive), &redrivePolicy)
 	if err != nil {
-		fmt.Println("error unmarshalling redrive policy", err)
+		client.logger.Println("error unmarshalling redrive policy", err)
 		return
 	}
 	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
@@ -188,7 +186,6 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	id := r.Intn(10000)
 	i := 0
 	for _, record := range records {
-		// fmt.Println("record:", record)
 		if record != nil {
 			messages[i] = types.SendMessageBatchRequestEntry{
 				DelaySeconds: 0,
@@ -237,8 +234,6 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
 	newDelay := delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
-	fmt.Println("MaxDelay:", client.MaxDelay)
-	fmt.Println("newDelay:", newDelay)
 	if newDelay > client.MaxDelay {
 		return client.MaxDelay
 	}
@@ -338,7 +333,6 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 		client.logger.Printf("error receiving messages: %v", err)
 		return nil, SQSError{util.WrapError(err, "error receiving messages")}
 	}
-	fmt.Println("msg.Messages:", msg.Messages)
 	if msg.Messages == nil || len(msg.Messages) <= 0 {
 		client.logger.Printf("No messages found")
 		return nil, SQSError{util.WrapError(nil, "No messages.")}
@@ -364,9 +358,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 			if err != nil {
 				client.logger.Println("receiveMessage failed")
 				time.Sleep(client.reconnectDelay)
-				fmt.Println("b4 client.reconnectDelay", client.reconnectDelay)
 				client.reconnectDelay = client.progressiveDelay(client.reconnectDelay)
-				fmt.Println("client.reconnectDelay", client.reconnectDelay)
 			} else {
 				select {
 				case <-ctx.Done():
@@ -377,7 +369,6 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 					}
 					// reset the reconnectDelay
 					client.reconnectDelay = client.ReconnectDelay
-					fmt.Println("reset client.reconnectDelay", client.reconnectDelay)
 				}
 			}
 		}
