@@ -236,7 +236,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 // progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 	r := rand.New(rand.NewSource(time.Now().Unix()))
-	newDelay := delay + time.Duration(r.Intn(int(delay*time.Second)))*time.Second
+	newDelay := delay + time.Duration(r.Intn(int(delay/time.Second)))*time.Second
 	fmt.Println("MaxDelay:", client.MaxDelay)
 	fmt.Println("newDelay:", newDelay)
 	if newDelay > client.MaxDelay {
@@ -364,18 +364,21 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 			if err != nil {
 				client.logger.Println("receiveMessage failed")
 				time.Sleep(client.reconnectDelay)
-				client.reconnectDelay = client.progressiveDelay(client.resendDelay)
-				continue
-			}
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				for _, m := range output.Messages {
-					outChan <- &m
+				fmt.Println("b4 client.reconnectDelay", client.reconnectDelay)
+				client.reconnectDelay = client.progressiveDelay(client.reconnectDelay)
+				fmt.Println("client.reconnectDelay", client.reconnectDelay)
+			} else {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					for _, m := range output.Messages {
+						outChan <- &m
+					}
+					// reset the reconnectDelay
+					client.reconnectDelay = client.ReconnectDelay
+					fmt.Println("reset client.reconnectDelay", client.reconnectDelay)
 				}
-				// reset the reconnectDelay
-				client.reconnectDelay = client.ReconnectDelay
 			}
 		}
 	}()
