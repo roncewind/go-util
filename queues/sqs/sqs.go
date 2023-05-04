@@ -75,7 +75,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.resendDelay = client.ResendDelay
 	client.getRedrivePolicy(ctx)
 	client.isReady = true
-	client.logger.Println("QueueURL:", client.QueueURL)
+	client.logger.Println("QueueURL:", *client.QueueURL)
 	client.logger.Println("dead letter queue URL:", client.deadLetterQueueURL)
 	client.logger.Println("Setup!")
 	return &client, nil
@@ -92,6 +92,8 @@ func (client *Client) getQueueURL(ctx context.Context, urlString string) error {
 	}
 	queryMap, _ := url.ParseQuery(u.RawQuery)
 	if len(queryMap["queue-name"]) < 1 {
+		client.QueueURL = &urlString
+	} else {
 		client.QueueName = queryMap["queue-name"][0]
 		// Get the URL for the queue
 		input := &sqs.GetQueueUrlInput{
@@ -105,8 +107,6 @@ func (client *Client) getQueueURL(ctx context.Context, urlString string) error {
 		client.sqsURL = sqsURL
 		client.QueueURL = sqsURL.QueueUrl
 		fmt.Println(sqsURL.ResultMetadata)
-	} else {
-		client.QueueURL = &urlString
 	}
 	return nil
 }
