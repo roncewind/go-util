@@ -336,13 +336,13 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 		client.logger.Printf("error receiving messages: %v", err)
 		return nil, SQSError{util.WrapError(err, "error receiving messages")}
 	}
-
-	if msg.Messages == nil {
+	fmt.Println("msg:", msg)
+	if msg.Messages == nil || len(msg.Messages) <= 0 {
 		client.logger.Printf("No messages found")
 		return nil, SQSError{util.WrapError(nil, "No messages.")}
 	}
 
-	client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
+	// client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
 	return msg, nil
 }
 
