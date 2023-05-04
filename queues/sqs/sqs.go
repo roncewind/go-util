@@ -130,6 +130,7 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 		client.logger.Println("Unable to retrieve queue redrive policy", err)
 		return
 	}
+	fmt.Println("Attributes", queueAttributes.Attributes)
 	redrive := queueAttributes.Attributes[string(types.QueueAttributeNameRedrivePolicy)]
 	fmt.Println("redrive:", redrive)
 	var redrivePolicy redrivePolicy
