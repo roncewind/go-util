@@ -288,7 +288,6 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		return SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
 	i := 0
-	batches := 0
 	records := make([]queues.Record, 10)
 	for {
 		select {
@@ -297,20 +296,16 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		case record, ok := <-recordchan:
 			if !ok {
 				if i > 0 {
-					batches++
 					err := client.sendRecordBatch(ctx, records)
 					if err != nil {
 						client.logger.Println("last batch, sendRecordBatch error:", err)
 					}
 				}
-				client.logger.Println("sent", batches, "batches")
 				return nil
 			} else {
 				records[i] = record
 				i++
 				if i >= 10 {
-					client.logger.Println("sent batch of", i)
-					batches++
 					err := client.sendRecordBatch(ctx, records)
 					if err != nil {
 						client.logger.Println("sendRecordBatch error:", err)
