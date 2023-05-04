@@ -327,8 +327,8 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 	receiveInput := &sqs.ReceiveMessageInput{
 		QueueUrl:              client.QueueURL,
 		MessageAttributeNames: []string{"All"},
-		MaxNumberOfMessages:   1,
-		VisibilityTimeout:     int32(10),
+		MaxNumberOfMessages:   10,
+		// VisibilityTimeout:     int32(10),
 	}
 
 	msg, err := client.sqsClient.ReceiveMessage(ctx, receiveInput)
