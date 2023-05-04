@@ -390,7 +390,5 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 		client.logger.Println(err)
 		return err
 	}
-
-	client.logger.Println("Deleted message from queue with URL ", *client.QueueURL)
 	return nil
 }
