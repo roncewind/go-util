@@ -121,8 +121,8 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 	params := &sqs.GetQueueAttributesInput{
 		QueueUrl: aws.String(*client.QueueURL),
 		AttributeNames: []types.QueueAttributeName{
-			types.QueueAttributeNameAll,
-			// types.QueueAttributeNameRedrivePolicy,
+			// types.QueueAttributeNameAll,
+			types.QueueAttributeNameRedrivePolicy,
 		},
 	}
 	queueAttributes, err := client.sqsClient.GetQueueAttributes(ctx, params)
@@ -130,9 +130,9 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 		client.logger.Println("Unable to retrieve queue redrive policy", err)
 		return
 	}
-	fmt.Println("Attributes", queueAttributes.Attributes)
+	// fmt.Println("Attributes", queueAttributes.Attributes)
 	redrive := queueAttributes.Attributes[string(types.QueueAttributeNameRedrivePolicy)]
-	fmt.Println("redrive:", redrive)
+	// fmt.Println("redrive:", redrive)
 	var redrivePolicy redrivePolicy
 	err = json.Unmarshal([]byte(redrive), &redrivePolicy)
 	if err != nil {
