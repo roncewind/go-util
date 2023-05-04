@@ -21,6 +21,7 @@ import (
 
 type Client struct {
 	QueueName string
+	QueueURL  *string
 	// desired / default delay durations
 	MaxDelay       time.Duration
 	ReconnectDelay time.Duration
@@ -52,50 +53,62 @@ var (
 
 // New creates a single SQS client
 func NewClient(ctx context.Context, urlString string) (*Client, error) {
-	u, err := url.Parse(urlString)
-	if err != nil {
-		return nil, SQSError{util.WrapError(err, "unable to parse SQS URL string")}
-		// panic(err)
+	client := Client{
+		MaxDelay:       10 * time.Minute,
+		ReconnectDelay: 2 * time.Second,
+		ResendDelay:    1 * time.Second,
+
+		logger: log.New(os.Stdout, "", log.LstdFlags),
 	}
-	queryMap, _ := url.ParseQuery(u.RawQuery)
-	if len(queryMap["queue-name"]) < 1 {
-		return nil, SQSError{util.WrapError(err, "please define a queue-name as query parameters")}
+	err := client.getQueueURL(ctx, urlString)
+	if err != nil {
+		return &client, err
 	}
 
 	// load the default aws config
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		log.Fatalf("configuration error: %v", err)
+		return &client, err
 	}
-
-	client := Client{
-		MaxDelay:       10 * time.Minute,
-		QueueName:      queryMap["queue-name"][0],
-		ReconnectDelay: 2 * time.Second,
-		ResendDelay:    1 * time.Second,
-
-		logger:    log.New(os.Stdout, "", log.LstdFlags),
-		sqsClient: sqs.NewFromConfig(cfg),
-	}
-	// Get the URL for the queue
-	input := &sqs.GetQueueUrlInput{
-		QueueName: &queryMap["queue-name"][0],
-	}
-
-	sqsURL, err := client.sqsClient.GetQueueUrl(ctx, input)
-	if err != nil {
-		client.logger.Printf("error getting the queue URL: %v", err)
-		return nil, SQSError{util.WrapError(err, fmt.Sprintf("unable to retrieve SQS URL from: %s", urlString))}
-	}
-	client.sqsURL = sqsURL
+	client.sqsClient = sqs.NewFromConfig(cfg)
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
 	client.getRedrivePolicy(ctx)
 	client.isReady = true
-	client.logger.Println("sqsURL:", sqsURL)
+	client.logger.Println("QueueURL:", client.QueueURL)
 	client.logger.Println("dead letter queue URL:", client.deadLetterQueueURL)
 	client.logger.Println("Setup!")
 	return &client, nil
+}
+
+// ----------------------------------------------------------------------------
+
+// Interrogates the given input URL and retrieves the SQS URL or uses it as it.
+func (client *Client) getQueueURL(ctx context.Context, urlString string) error {
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return SQSError{util.WrapError(err, "unable to parse SQS URL string")}
+		// panic(err)
+	}
+	queryMap, _ := url.ParseQuery(u.RawQuery)
+	if len(queryMap["queue-name"]) < 1 {
+		client.QueueName = queryMap["queue-name"][0]
+		// Get the URL for the queue
+		input := &sqs.GetQueueUrlInput{
+			QueueName: &queryMap["queue-name"][0],
+		}
+		sqsURL, err := client.sqsClient.GetQueueUrl(ctx, input)
+		if err != nil {
+			client.logger.Printf("error getting the queue URL: %v", err)
+			return SQSError{util.WrapError(err, fmt.Sprintf("unable to retrieve SQS URL from: %s", urlString))}
+		}
+		client.sqsURL = sqsURL
+		client.QueueURL = sqsURL.QueueUrl
+		fmt.Println(sqsURL.ResultMetadata)
+	} else {
+		client.QueueURL = &urlString
+	}
+	return nil
 }
 
 // ----------------------------------------------------------------------------
@@ -104,7 +117,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 // queue URL in the client
 func (client *Client) getRedrivePolicy(ctx context.Context) {
 	params := &sqs.GetQueueAttributesInput{
-		QueueUrl: aws.String(*client.sqsURL.QueueUrl),
+		QueueUrl: aws.String(*client.QueueURL),
 		AttributeNames: []types.QueueAttributeName{
 			// types.QueueAttributeNameAll,
 			types.QueueAttributeNameRedrivePolicy,
@@ -149,7 +162,7 @@ func (client *Client) sendRecord(ctx context.Context, record queues.Record) (err
 			},
 		},
 		MessageBody: aws.String(record.GetMessage()),
-		QueueUrl:    client.sqsURL.QueueUrl,
+		QueueUrl:    client.QueueURL,
 	}
 
 	resp, err := client.sqsClient.SendMessage(ctx, messageInput)
@@ -196,7 +209,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageBatchInput{
 		Entries:  messages[0:i],
-		QueueUrl: client.sqsURL.QueueUrl,
+		QueueUrl: client.QueueURL,
 	}
 
 	resp, err := client.sqsClient.SendMessageBatch(ctx, messageInput)
@@ -315,7 +328,7 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 
 	// Receive a message with attributes to the given queue
 	receiveInput := &sqs.ReceiveMessageInput{
-		QueueUrl:              client.sqsURL.QueueUrl,
+		QueueUrl:              client.QueueURL,
 		MessageAttributeNames: []string{"All"},
 		MaxNumberOfMessages:   1,
 		VisibilityTimeout:     int32(10),
@@ -375,7 +388,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 // Remove a message from the SQS queue
 func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) error {
 	deleteMessageInput := &sqs.DeleteMessageInput{
-		QueueUrl:      client.sqsURL.QueueUrl,
+		QueueUrl:      client.QueueURL,
 		ReceiptHandle: msg.ReceiptHandle,
 	}
 
@@ -386,6 +399,6 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 		return err
 	}
 
-	client.logger.Println("Deleted message from queue with URL ", *client.sqsURL.QueueUrl)
+	client.logger.Println("Deleted message from queue with URL ", *client.QueueURL)
 	return nil
 }
