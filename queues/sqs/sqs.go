@@ -60,17 +60,18 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 
 		logger: log.New(os.Stdout, "", log.LstdFlags),
 	}
-	err := client.getQueueURL(ctx, urlString)
-	if err != nil {
-		return &client, err
-	}
-
 	// load the default aws config
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return &client, err
 	}
 	client.sqsClient = sqs.NewFromConfig(cfg)
+
+	err = client.getQueueURL(ctx, urlString)
+	if err != nil {
+		return &client, err
+	}
+
 	client.reconnectDelay = client.ReconnectDelay
 	client.resendDelay = client.ResendDelay
 	client.getRedrivePolicy(ctx)
