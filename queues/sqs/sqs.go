@@ -3,6 +3,7 @@ package sqs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -161,6 +162,10 @@ type redrivePolicy struct {
 
 // send a message to a queue.
 func (client *Client) sendDeadRecord(ctx context.Context, record *types.Message) (err error) {
+
+	if client.sqsDLQClient == nil {
+		return errors.New("No dead letter queue found")
+	}
 
 	// Send a message with attributes to the given queue
 	messageInput := &sqs.SendMessageInput{
