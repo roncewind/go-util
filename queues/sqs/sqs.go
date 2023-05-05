@@ -35,9 +35,10 @@ type Client struct {
 	reconnectDelay time.Duration
 	resendDelay    time.Duration
 
-	region    string //TODO: configure region??
-	sqsClient *sqs.Client
-	sqsURL    *sqs.GetQueueUrlOutput
+	region       string //TODO: configure region??
+	sqsClient    *sqs.Client
+	sqsDLQClient *sqs.Client
+	sqsURL       *sqs.GetQueueUrlOutput
 }
 
 type SQSError struct {
@@ -137,6 +138,15 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 	}
 	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
 	client.DeadLetterQueueURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
+	if len(client.DeadLetterQueueURL) > 0 {
+		// load the default aws config
+		cfg, err := config.LoadDefaultConfig(ctx)
+		if err != nil {
+			client.sqsDLQClient = nil
+		} else {
+			client.sqsDLQClient = sqs.NewFromConfig(cfg)
+		}
+	}
 }
 
 // ----------------------------------------------------------------------------
@@ -145,6 +155,30 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 type redrivePolicy struct {
 	DeadLetterTargetArn string `json:"deadLetterTargetArn"`
 	MaxReceiveCount     int    `json:"maxReceiveCount"`
+}
+
+// ----------------------------------------------------------------------------
+
+// send a message to a queue.
+func (client *Client) sendDeadRecord(ctx context.Context, record *types.Message) (err error) {
+
+	// Send a message with attributes to the given queue
+	messageInput := &sqs.SendMessageInput{
+		DelaySeconds:      0,
+		MessageAttributes: record.MessageAttributes,
+		MessageBody:       aws.String(*record.Body),
+		QueueUrl:          client.QueueURL,
+	}
+
+	resp, err := client.sqsDLQClient.SendMessage(ctx, messageInput)
+	if err != nil {
+		client.logger.Printf("error sending the dead record: %v", err)
+		return
+	}
+
+	client.logger.Printf("AWS response Message ID: %s", *resp.MessageId)
+
+	return nil
 }
 
 // ----------------------------------------------------------------------------
