@@ -20,8 +20,9 @@ import (
 )
 
 type Client struct {
-	QueueName string
-	QueueURL  *string
+	DeadLetterQueueURL string
+	QueueName          string
+	QueueURL           *string
 	// desired / default delay durations
 	MaxDelay       time.Duration
 	ReconnectDelay time.Duration
@@ -34,10 +35,9 @@ type Client struct {
 	reconnectDelay time.Duration
 	resendDelay    time.Duration
 
-	deadLetterQueueURL string
-	region             string //TODO: configure region??
-	sqsClient          *sqs.Client
-	sqsURL             *sqs.GetQueueUrlOutput
+	region    string //TODO: configure region??
+	sqsClient *sqs.Client
+	sqsURL    *sqs.GetQueueUrlOutput
 }
 
 type SQSError struct {
@@ -77,7 +77,7 @@ func NewClient(ctx context.Context, urlString string) (*Client, error) {
 	client.getRedrivePolicy(ctx)
 	client.isReady = true
 	client.logger.Println("QueueURL:", *client.QueueURL)
-	client.logger.Println("dead letter queue URL:", client.deadLetterQueueURL)
+	client.logger.Println("dead letter queue URL:", client.DeadLetterQueueURL)
 	client.logger.Println("Setup!")
 	return &client, nil
 }
@@ -136,7 +136,7 @@ func (client *Client) getRedrivePolicy(ctx context.Context) {
 		return
 	}
 	fields := strings.Split(redrivePolicy.DeadLetterTargetArn, ":")
-	client.deadLetterQueueURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
+	client.DeadLetterQueueURL = fmt.Sprintf("https://queue.amazonaws.com/%s/%s", fields[4], fields[5])
 }
 
 // ----------------------------------------------------------------------------
