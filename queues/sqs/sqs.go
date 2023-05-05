@@ -281,6 +281,14 @@ func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 
 // ----------------------------------------------------------------------------
 
+// PushDeadRecord will push an erroneous record onto the DLQ.
+// TODO: work on resend with delay...
+func (client *Client) PushDeadRecord(ctx context.Context, record *types.Message) error {
+	return client.sendDeadRecord(ctx, record)
+}
+
+// ----------------------------------------------------------------------------
+
 // Push will push data onto the queue and wait for a response.
 // TODO: work on resend with delay...
 func (client *Client) Push(ctx context.Context, record queues.Record) error {
