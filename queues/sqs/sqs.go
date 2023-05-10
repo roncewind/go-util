@@ -439,3 +439,10 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 	}
 	return nil
 }
+
+// ----------------------------------------------------------------------------
+
+// Close will cleanly shutdown the channel and connection.
+func (client *Client) Close() error {
+	return nil
+}
