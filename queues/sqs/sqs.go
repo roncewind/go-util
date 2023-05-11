@@ -414,6 +414,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 				default:
 					fmt.Println("Consume received", len(output.Messages), "messages")
 					for _, m := range output.Messages {
+						fmt.Println("m address", &m)
 						fmt.Println("ReceiveMessageOutput message:!", *m.Body)
 						outChan <- &m
 					}
