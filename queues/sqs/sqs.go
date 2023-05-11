@@ -372,7 +372,7 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 	receiveInput := &sqs.ReceiveMessageInput{
 		QueueUrl:              client.QueueURL,
 		MessageAttributeNames: []string{"All"},
-		MaxNumberOfMessages:   1,
+		MaxNumberOfMessages:   10,
 		// VisibilityTimeout:     int32(10),
 	}
 
@@ -403,6 +403,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 	go func() {
 		for {
 			output, err := client.receiveMessage(ctx)
+
 			if err != nil {
 				time.Sleep(client.reconnectDelay)
 				client.reconnectDelay = client.progressiveDelay(client.reconnectDelay)
@@ -411,6 +412,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 				case <-ctx.Done():
 					return
 				default:
+					fmt.Println("Consume received", len(output.Messages), "messages")
 					for _, m := range output.Messages {
 						outChan <- &m
 					}
