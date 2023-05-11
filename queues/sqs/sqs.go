@@ -348,6 +348,7 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 				return nil
 			} else {
 				records[i] = record
+				fmt.Println("batch push record:", record.GetMessageId())
 				i++
 				if i >= 10 {
 					err := client.sendRecordBatch(ctx, records)
