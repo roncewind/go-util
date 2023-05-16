@@ -372,7 +372,7 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 	receiveInput := &sqs.ReceiveMessageInput{
 		QueueUrl:              client.QueueURL,
 		MessageAttributeNames: []string{"All"},
-		MaxNumberOfMessages:   1,
+		MaxNumberOfMessages:   10,
 		// VisibilityTimeout:     int32(10),
 	}
 
@@ -399,7 +399,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 		// <-client.notifyReady
 		return nil, SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
-	outChan := make(chan *types.Message)
+	outChan := make(chan *types.Message, 10)
 	go func() {
 		for {
 			output, err := client.receiveMessage(ctx)
