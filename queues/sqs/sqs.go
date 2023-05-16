@@ -393,13 +393,13 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 // ----------------------------------------------------------------------------
 
 // Consume will continuously put queue messages on the channel.
-func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error) {
+func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error) {
 	if !client.isReady {
 		// wait for client to be ready
 		// <-client.notifyReady
 		return nil, SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
-	outChan := make(chan *types.Message, 10)
+	outChan := make(chan types.Message, 10)
 	go func() {
 		for {
 			output, err := client.receiveMessage(ctx)
@@ -416,7 +416,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan *types.Message, error
 					for _, m := range output.Messages {
 						// fmt.Println("m address", &m)
 						fmt.Println("ReceiveMessageOutput message:!", *m.Body)
-						outChan <- &m
+						outChan <- m
 					}
 					// reset the reconnectDelay
 					client.reconnectDelay = client.ReconnectDelay
