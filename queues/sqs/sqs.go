@@ -172,7 +172,7 @@ func (client *Client) sendDeadRecord(ctx context.Context, record *types.Message)
 		DelaySeconds:      0,
 		MessageAttributes: record.MessageAttributes,
 		MessageBody:       aws.String(*record.Body),
-		QueueUrl:          client.QueueURL,
+		QueueUrl:          &client.DeadLetterQueueURL,
 	}
 
 	resp, err := client.sqsDLQClient.SendMessage(ctx, messageInput)
@@ -311,7 +311,6 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 				client.resendDelay = client.progressiveDelay(client.resendDelay)
 			}
 			continue
-			// return err
 		} else {
 			//reset the resend delay
 			client.resendDelay = client.ResendDelay
@@ -333,34 +332,56 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 	}
 	i := 0
 	records := make([]queues.Record, 10)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case record, ok := <-recordchan:
-			if !ok {
-				if i > 0 {
-					err := client.sendRecordBatch(ctx, records)
-					if err != nil {
-						client.logger.Println("last batch, sendRecordBatch error:", err)
-					}
-				}
-				return nil
-			} else {
-				records[i] = record
-				fmt.Println("batch push record:!", record.GetMessage())
-				i++
-				if i >= 10 {
-					err := client.sendRecordBatch(ctx, records)
-					if err != nil {
-						client.logger.Println("sendRecordBatch error:", err)
-					}
-					i = 0
-					records = make([]queues.Record, 10)
-				}
+	for record := range util.OrDone(ctx, recordchan) {
+		records[i] = record
+		fmt.Println("batch push record:!", record.GetMessageId())
+		i++
+		if i >= 10 {
+			err := client.sendRecordBatch(ctx, records)
+			if err != nil {
+				client.logger.Println("sendRecordBatch error:", err)
 			}
+			i = 0
+			records = make([]queues.Record, 10)
 		}
 	}
+	//handle a last partial batch
+	if i > 0 {
+		err := client.sendRecordBatch(ctx, records)
+		if err != nil {
+			client.logger.Println("last batch, sendRecordBatch error:", err)
+		}
+	}
+	return nil
+
+	// for {
+	// 	select {
+	// 	case <-ctx.Done():
+	// 		return nil
+	// 	case record, ok := <-recordchan:
+	// 		if !ok {
+	// 			if i > 0 {
+	// 				err := client.sendRecordBatch(ctx, records)
+	// 				if err != nil {
+	// 					client.logger.Println("last batch, sendRecordBatch error:", err)
+	// 				}
+	// 			}
+	// 			return nil
+	// 		} else {
+	// 			records[i] = record
+	// 			fmt.Println("batch push record:!", record.GetMessage())
+	// 			i++
+	// 			if i >= 10 {
+	// 				err := client.sendRecordBatch(ctx, records)
+	// 				if err != nil {
+	// 					client.logger.Println("sendRecordBatch error:", err)
+	// 				}
+	// 				i = 0
+	// 				records = make([]queues.Record, 10)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 // ----------------------------------------------------------------------------
@@ -412,10 +433,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 				case <-ctx.Done():
 					return
 				default:
-					fmt.Println("Consume received", len(output.Messages), "messages")
 					for _, m := range output.Messages {
-						// fmt.Println("m address", &m)
-						fmt.Println("ReceiveMessageOutput message:!", *m.Body)
 						outChan <- m
 					}
 					// reset the reconnectDelay
