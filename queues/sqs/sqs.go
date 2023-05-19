@@ -454,6 +454,7 @@ func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) err
 		ReceiptHandle: msg.ReceiptHandle,
 	}
 
+	fmt.Println("SQS Client delete message:", msg.MessageId)
 	_, err := client.sqsClient.DeleteMessage(ctx, deleteMessageInput)
 	if err != nil {
 		client.logger.Println("Got an error deleting the message:")
