@@ -161,7 +161,7 @@ type redrivePolicy struct {
 // ----------------------------------------------------------------------------
 
 // send a message to a queue.
-func (client *Client) sendDeadRecord(ctx context.Context, record *types.Message) (err error) {
+func (client *Client) sendDeadRecord(ctx context.Context, record types.Message) (err error) {
 
 	if client.sqsDLQClient == nil {
 		return errors.New("No dead letter queue found")
@@ -283,7 +283,7 @@ func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 
 // PushDeadRecord will push an erroneous record onto the DLQ.
 // TODO: work on resend with delay...
-func (client *Client) PushDeadRecord(ctx context.Context, record *types.Message) error {
+func (client *Client) PushDeadRecord(ctx context.Context, record types.Message) error {
 	return client.sendDeadRecord(ctx, record)
 }
 
