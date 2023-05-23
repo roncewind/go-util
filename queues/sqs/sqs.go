@@ -448,7 +448,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 // ----------------------------------------------------------------------------
 
 // Remove a message from the SQS queue
-func (client *Client) RemoveMessage(ctx context.Context, msg *types.Message) error {
+func (client *Client) RemoveMessage(ctx context.Context, msg types.Message) error {
 	deleteMessageInput := &sqs.DeleteMessageInput{
 		QueueUrl:      client.QueueURL,
 		ReceiptHandle: msg.ReceiptHandle,
