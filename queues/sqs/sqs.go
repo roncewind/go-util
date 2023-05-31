@@ -422,6 +422,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 	}
 	outChan := make(chan types.Message, 10)
 	go func() {
+		messageCount := 0
 		for {
 			output, err := client.receiveMessage(ctx)
 
@@ -431,10 +432,13 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 			} else {
 				select {
 				case <-ctx.Done():
+					fmt.Println("DEBUG: final messageCount:", messageCount)
 					return
 				default:
 					for _, m := range output.Messages {
 						outChan <- m
+						messageCount++
+						fmt.Println("DEBUG: read message from SQS. messageCount:", messageCount)
 					}
 					// reset the reconnectDelay
 					client.reconnectDelay = client.ReconnectDelay
