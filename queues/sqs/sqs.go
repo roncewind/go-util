@@ -410,6 +410,11 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 	// client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
 	fmt.Println("DEBUG: receiveMessage count,", len(msg.Messages))
 	fmt.Printf("DEBUG: receiveMessage ResultMetadata, %+v\n", msg.ResultMetadata)
+	if msg.ResultMetadata.Has("Results") {
+		fmt.Printf("DEBUG: %+v\n", msg.ResultMetadata.Get("Results"))
+	} else {
+		fmt.Println("DEBUG: no 'Results'")
+	}
 	return msg, nil
 }
 
