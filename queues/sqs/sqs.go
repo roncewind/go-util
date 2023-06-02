@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -410,10 +411,33 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 	// client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
 	fmt.Println("DEBUG: receiveMessage count,", len(msg.Messages))
 	fmt.Printf("DEBUG: receiveMessage ResultMetadata, %+v\n", msg.ResultMetadata)
+	metaType := reflect.TypeOf(msg.ResultMetadata)
+	if metaType.Kind() == reflect.Map {
+		iter := reflect.ValueOf(msg.ResultMetadata).MapRange()
+		for iter.Next() {
+			fmt.Println(iter.Key(), ":", iter.Value())
+		}
+
+	}
 	if msg.ResultMetadata.Has("Results") {
 		fmt.Printf("DEBUG: %+v\n", msg.ResultMetadata.Get("Results"))
 	} else {
 		fmt.Println("DEBUG: no 'Results'")
+	}
+	if msg.ResultMetadata.Has("values") {
+		v := msg.ResultMetadata.Get("values")
+		fmt.Printf("DEBUG: values = %+v\n", v)
+		vType := reflect.TypeOf(v)
+		if vType.Kind() == reflect.Map {
+			iter := reflect.ValueOf(v).MapRange()
+			for iter.Next() {
+				fmt.Println(iter.Key(), ":", iter.Value())
+			}
+
+		}
+
+	} else {
+		fmt.Println("DEBUG: no 'values'")
 	}
 	return msg, nil
 }
