@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net/url"
 	"os"
-	"reflect"
 	"strings"
 	"time"
 
@@ -410,35 +409,30 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 
 	// client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
 	fmt.Println("DEBUG: receiveMessage count,", len(msg.Messages))
-	fmt.Printf("DEBUG: receiveMessage ResultMetadata, %+v\n", msg.ResultMetadata)
-	metaType := reflect.TypeOf(msg.ResultMetadata)
-	if metaType.Kind() == reflect.Map {
-		iter := reflect.ValueOf(msg.ResultMetadata).MapRange()
-		for iter.Next() {
-			fmt.Println(iter.Key(), ":", iter.Value())
-		}
-
-	}
-	if msg.ResultMetadata.Has("Results") {
-		fmt.Printf("DEBUG: %+v\n", msg.ResultMetadata.Get("Results"))
+	fmt.Printf("DEBUG: receiveMessage ResultMetadata 0, %v\n", msg.ResultMetadata)
+	fmt.Printf("DEBUG: receiveMessage ResultMetadata 1, %+v\n", msg.ResultMetadata)
+	fmt.Printf("DEBUG: receiveMessage ResultMetadata 2, %#v\n", msg.ResultMetadata)
+	fmt.Printf("DEBUG: receiveMessage ResultMetadata 3, %T\n", msg.ResultMetadata)
+	if msg.ResultMetadata.Has("Err") {
+		fmt.Printf("DEBUG: %+v\n", msg.ResultMetadata.Get("Err"))
 	} else {
-		fmt.Println("DEBUG: no 'Results'")
+		fmt.Println("DEBUG: no 'Err'")
 	}
-	if msg.ResultMetadata.Has("values") {
-		v := msg.ResultMetadata.Get("values")
-		fmt.Printf("DEBUG: values = %+v\n", v)
-		vType := reflect.TypeOf(v)
-		if vType.Kind() == reflect.Map {
-			iter := reflect.ValueOf(v).MapRange()
-			for iter.Next() {
-				fmt.Println(iter.Key(), ":", iter.Value())
-			}
+	// if msg.ResultMetadata.Has("values") {
+	// 	v := msg.ResultMetadata.Get("values")
+	// 	fmt.Printf("DEBUG: values = %+v\n", v)
+	// 	vType := reflect.TypeOf(v)
+	// 	if vType.Kind() == reflect.Map {
+	// 		iter := reflect.ValueOf(v).MapRange()
+	// 		for iter.Next() {
+	// 			fmt.Println(iter.Key(), ":", iter.Value())
+	// 		}
 
-		}
+	// 	}
 
-	} else {
-		fmt.Println("DEBUG: no 'values'")
-	}
+	// } else {
+	// 	fmt.Println("DEBUG: no 'values'")
+	// }
 	return msg, nil
 }
 
@@ -466,9 +460,8 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 					fmt.Println("DEBUG: final messageCount:", messageCount)
 					return
 				default:
-					for range output.Messages {
-						// for _, m :=range output.Messages {
-						// outChan <- m
+					for _, m := range output.Messages {
+						outChan <- m
 						messageCount++
 						fmt.Println("DEBUG: read message from SQS. messageCount:", messageCount)
 					}
