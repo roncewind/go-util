@@ -466,8 +466,9 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 					fmt.Println("DEBUG: final messageCount:", messageCount)
 					return
 				default:
-					for _, m := range output.Messages {
-						outChan <- m
+					for range output.Messages {
+						// for _, m :=range output.Messages {
+						// outChan <- m
 						messageCount++
 						fmt.Println("DEBUG: read message from SQS. messageCount:", messageCount)
 					}
