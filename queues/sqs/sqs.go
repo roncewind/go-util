@@ -387,14 +387,14 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 // ----------------------------------------------------------------------------
 
 // receive a message from a queue.
-func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOutput, error) {
+func (client *Client) receiveMessage(ctx context.Context, visibilitySeconds int32) (*sqs.ReceiveMessageOutput, error) {
 
 	// Receive a message with attributes to the given queue
 	receiveInput := &sqs.ReceiveMessageInput{
 		QueueUrl:              client.QueueURL,
 		MessageAttributeNames: []string{"All"},
 		MaxNumberOfMessages:   10,
-		// VisibilityTimeout:     int32(10),
+		VisibilityTimeout:     visibilitySeconds,
 	}
 
 	msg, err := client.sqsClient.ReceiveMessage(ctx, receiveInput)
@@ -439,7 +439,7 @@ func (client *Client) receiveMessage(ctx context.Context) (*sqs.ReceiveMessageOu
 // ----------------------------------------------------------------------------
 
 // Consume will continuously put queue messages on the channel.
-func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error) {
+func (client *Client) Consume(ctx context.Context, visibilitySeconds int32) (<-chan types.Message, error) {
 	if !client.isReady {
 		// wait for client to be ready
 		// <-client.notifyReady
@@ -449,7 +449,7 @@ func (client *Client) Consume(ctx context.Context) (<-chan types.Message, error)
 	go func() {
 		messageCount := 0
 		for {
-			output, err := client.receiveMessage(ctx)
+			output, err := client.receiveMessage(ctx, visibilitySeconds)
 
 			if err != nil {
 				time.Sleep(client.reconnectDelay)
