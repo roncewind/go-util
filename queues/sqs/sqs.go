@@ -495,6 +495,35 @@ func (client *Client) RemoveMessage(ctx context.Context, msg types.Message) erro
 
 // ----------------------------------------------------------------------------
 
+// Remove a message from the SQS queue
+func (client *Client) SetMessageVisibility(ctx context.Context, msg types.Message, seconds int32) error {
+
+	if seconds < 0 {
+		seconds = 0
+	}
+
+	if seconds > 12*60*60 { //12 hour max
+		seconds = 12 * 60 * 60
+	}
+
+	setVisibilityInput := &sqs.ChangeMessageVisibilityInput{
+		ReceiptHandle:     msg.ReceiptHandle,
+		QueueUrl:          client.QueueURL,
+		VisibilityTimeout: seconds,
+	}
+
+	fmt.Println("SQS Client set message visibility:", msg.MessageId)
+	_, err := client.sqsClient.ChangeMessageVisibility(ctx, setVisibilityInput)
+	if err != nil {
+		client.logger.Println("Got an error changing message visibility:")
+		client.logger.Println(err)
+		return err
+	}
+	return nil
+}
+
+// ----------------------------------------------------------------------------
+
 // Close will cleanly shutdown the channel and connection.
 func (client *Client) Close() error {
 	return nil
