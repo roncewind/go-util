@@ -58,8 +58,10 @@ func NewClient(urlString string) (*Client, error) {
 	u, err := url.Parse(urlString)
 	if err != nil {
 		return nil, RabbitError{util.WrapError(err, "unable to parse RabbitMQ URL string")}
-		// panic(err)
 	}
+	// seed the random number generator
+	rand.Seed(time.Now().UnixNano())
+
 	queryMap, _ := url.ParseQuery(u.RawQuery)
 	if len(queryMap["exchange"]) < 1 || len(queryMap["queue-name"]) < 1 {
 		return nil, RabbitError{util.WrapError(err, "please define an exchange and queue-name as query parameters")}
@@ -295,7 +297,6 @@ func (client *Client) changeChannel(channel *amqp.Channel) {
 
 // progressively increase the retry delay
 func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
-	//TODO:  seed random number generator
 	return delay + time.Duration(rand.Intn(int(delay/time.Second)))*time.Second
 }
 
