@@ -36,7 +36,7 @@ type Client struct {
 	reconnectDelay time.Duration
 	resendDelay    time.Duration
 
-	region       string //TODO: configure region??
+	region       string //: configure region??
 	sqsClient    *sqs.Client
 	sqsDLQClient *sqs.Client
 	sqsURL       *sqs.GetQueueUrlOutput
@@ -235,7 +235,7 @@ func (client *Client) sendRecordBatch(ctx context.Context, records []queues.Reco
 						StringValue: aws.String(record.GetMessageId()),
 					},
 				},
-				MessageBody: aws.String(record.GetMessage()), //TODO?  aws.String(string(utils.Base64Encode([]byte(body)))),
+				MessageBody: aws.String(record.GetMessage()), //?  aws.String(string(utils.Base64Encode([]byte(body)))),
 			}
 			i++
 		}
@@ -282,7 +282,7 @@ func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 // ----------------------------------------------------------------------------
 
 // PushDeadRecord will push an erroneous record onto the DLQ.
-// TODO: work on resend with delay...
+// : work on resend with delay...
 func (client *Client) PushDeadRecord(ctx context.Context, record types.Message) error {
 	return client.sendDeadRecord(ctx, record)
 }
@@ -290,7 +290,7 @@ func (client *Client) PushDeadRecord(ctx context.Context, record types.Message) 
 // ----------------------------------------------------------------------------
 
 // Push will push data onto the queue and wait for a response.
-// TODO: work on resend with delay...
+// : work on resend with delay...
 func (client *Client) Push(ctx context.Context, record queues.Record) error {
 
 	if !client.isReady {
@@ -302,12 +302,12 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 	for {
 		err := client.sendRecord(ctx, record)
 		if err != nil {
-			client.logger.Println("Push failed. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //TODO:  debug or trace logging, add messageId
+			client.logger.Println("Push failed. Retrying in", client.resendDelay, ". MessageId:", record.GetMessageId()) //:  debug or trace logging, add messageId
 			select {
 			case <-ctx.Done():
 				return errShutdown
 			case <-time.After(client.resendDelay):
-				//TODO:  resend forever???
+				//:  resend forever???
 				client.resendDelay = client.progressiveDelay(client.resendDelay)
 			}
 			continue
@@ -322,7 +322,7 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 // ----------------------------------------------------------------------------
 
 // Push will push data onto the queue and wait for a response.
-// TODO: work on resend with delay????
+// : work on resend with delay????
 func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Record) error {
 
 	if !client.isReady {
