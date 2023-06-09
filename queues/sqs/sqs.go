@@ -282,7 +282,7 @@ func (client *Client) progressiveDelay(delay time.Duration) time.Duration {
 // ----------------------------------------------------------------------------
 
 // PushDeadRecord will push an erroneous record onto the DLQ.
-// : work on resend with delay...
+// TODO: work on resend with delay...
 func (client *Client) PushDeadRecord(ctx context.Context, record types.Message) error {
 	return client.sendDeadRecord(ctx, record)
 }
@@ -290,12 +290,10 @@ func (client *Client) PushDeadRecord(ctx context.Context, record types.Message) 
 // ----------------------------------------------------------------------------
 
 // Push will push data onto the queue and wait for a response.
-// : work on resend with delay...
+// TODO: work on resend with delay...
 func (client *Client) Push(ctx context.Context, record queues.Record) error {
 
 	if !client.isReady {
-		// wait for client to be ready
-		// <-client.notifyReady
 		return SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
 
@@ -322,7 +320,7 @@ func (client *Client) Push(ctx context.Context, record queues.Record) error {
 // ----------------------------------------------------------------------------
 
 // Push will push data onto the queue and wait for a response.
-// : work on resend with delay????
+// TODO: work on resend with delay????
 func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Record) error {
 
 	if !client.isReady {
@@ -353,35 +351,6 @@ func (client *Client) PushBatch(ctx context.Context, recordchan <-chan queues.Re
 		}
 	}
 	return nil
-
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		return nil
-	// 	case record, ok := <-recordchan:
-	// 		if !ok {
-	// 			if i > 0 {
-	// 				err := client.sendRecordBatch(ctx, records)
-	// 				if err != nil {
-	// 					client.logger.Println("last batch, sendRecordBatch error:", err)
-	// 				}
-	// 			}
-	// 			return nil
-	// 		} else {
-	// 			records[i] = record
-	// 			fmt.Println("batch push record:!", record.GetMessage())
-	// 			i++
-	// 			if i >= 10 {
-	// 				err := client.sendRecordBatch(ctx, records)
-	// 				if err != nil {
-	// 					client.logger.Println("sendRecordBatch error:", err)
-	// 				}
-	// 				i = 0
-	// 				records = make([]queues.Record, 10)
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
 
 // ----------------------------------------------------------------------------
@@ -407,32 +376,6 @@ func (client *Client) receiveMessage(ctx context.Context, visibilitySeconds int3
 		return nil, SQSError{util.WrapError(nil, "No messages.")}
 	}
 
-	// client.logger.Printf("Message ID: %s, Message Body: %s", *msg.Messages[0].MessageId, *msg.Messages[0].Body)
-	fmt.Println("DEBUG: receiveMessage count,", len(msg.Messages))
-	fmt.Printf("DEBUG: receiveMessage ResultMetadata 0, %v\n", msg.ResultMetadata)
-	fmt.Printf("DEBUG: receiveMessage ResultMetadata 1, %+v\n", msg.ResultMetadata)
-	fmt.Printf("DEBUG: receiveMessage ResultMetadata 2, %#v\n", msg.ResultMetadata)
-	fmt.Printf("DEBUG: receiveMessage ResultMetadata 3, %T\n", msg.ResultMetadata)
-	if msg.ResultMetadata.Has("Err") {
-		fmt.Printf("DEBUG: %+v\n", msg.ResultMetadata.Get("Err"))
-	} else {
-		fmt.Println("DEBUG: no 'Err'")
-	}
-	// if msg.ResultMetadata.Has("values") {
-	// 	v := msg.ResultMetadata.Get("values")
-	// 	fmt.Printf("DEBUG: values = %+v\n", v)
-	// 	vType := reflect.TypeOf(v)
-	// 	if vType.Kind() == reflect.Map {
-	// 		iter := reflect.ValueOf(v).MapRange()
-	// 		for iter.Next() {
-	// 			fmt.Println(iter.Key(), ":", iter.Value())
-	// 		}
-
-	// 	}
-
-	// } else {
-	// 	fmt.Println("DEBUG: no 'values'")
-	// }
 	return msg, nil
 }
 
@@ -441,8 +384,6 @@ func (client *Client) receiveMessage(ctx context.Context, visibilitySeconds int3
 // Consume will continuously put queue messages on the channel.
 func (client *Client) Consume(ctx context.Context, visibilitySeconds int32) (<-chan types.Message, error) {
 	if !client.isReady {
-		// wait for client to be ready
-		// <-client.notifyReady
 		return nil, SQSError{util.WrapError(nil, "SQS client is not ready.")}
 	}
 	outChan := make(chan types.Message, 10)
